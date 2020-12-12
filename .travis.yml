@@ -1,0 +1,14 @@
+language: csharp
+sudo: required
+dist: xenial
+
+dotnet: 3.0.100
+addons:
+    apt:
+        packages:
+            - dotnet-sdk-2.2
+os:
+    - linux
+
+script:
+    - ./build.sh

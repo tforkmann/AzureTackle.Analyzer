@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "sourcelink": {
+      "version": "3.1.1",
+      "commands": [
+        "sourcelink"
+      ]
+    },
+    "dotnet-reportgenerator-globaltool": {
+      "version": "4.2.15",
+      "commands": [
+        "reportgenerator"
+      ]
+    },
+    "fake-cli": {
+      "version": "5.20.3",
+      "commands": [
+        "fake"
+      ]
+    },
+    "fcswatch-cli": {
+      "version": "0.7.14",
+      "commands": [
+        "fcswatch"
+      ]
+    },
+    "paket": {
+      "version": "6.0.0-beta4",
+      "commands": [
+        "paket"
+      ]
+    }
+  }
+}

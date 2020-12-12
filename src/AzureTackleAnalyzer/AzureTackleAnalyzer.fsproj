@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Name>AzureTackleAnalyzer</Name>
+        <TargetFramework>net5.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+        <Description>Advanced embedded static analysis and type-checking for SQL code from F#</Description>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)'=='Release'">
+        <Optimize>true</Optimize>
+        <Tailcalls>true</Tailcalls>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile Include="AzureTackleAnalyzer.fs" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Include="paket.references" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\AzureTackleAnalyzer.Core\AzureTackleAnalyzer.Core.fsproj" />
+    </ItemGroup>
+    <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>

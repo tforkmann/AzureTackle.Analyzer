@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>netcoreapp2.0</TargetFramework>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile Include="ParseUpdateTests.fs" />
+        <Compile Include="ParseInsertTests.fs" />
+        <Compile Include="ParseDeleteTests.fs" />
+        <Compile Include="ParseSelectTests.fs" />
+        <Compile Include="AssemblyInfo.fs" />
+        <Compile Include="Analyzer.fs" />
+        <Compile Include="Tests.fs" />
+        <Compile Include="Main.fs" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\AzureTackleAnalyzer\AzureTackleAnalyzer.fsproj" />
+        <ProjectReference Include="..\..\src\AzureTackleAnalyzer.Core\AzureTackleAnalyzer.Core.fsproj" />
+    </ItemGroup>
+    <Import Project="..\..\.paket\Paket.Restore.targets" />
+
+</Project>

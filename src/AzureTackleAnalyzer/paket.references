@@ -1,0 +1,4 @@
+group AzureTackleAnalyzer
+  Microsoft.SourceLink.GitHub
+  Microsoft.NETFramework.ReferenceAssemblies
+  FSharp.Analyzers.SDK

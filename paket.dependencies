@@ -1,0 +1,33 @@
+group AzureTackleAnalyzer
+  storage: none
+  source https://api.nuget.org/v3/index.json
+  frameworks: net5.0, netstandard2.0
+  nuget FSharp.Core == 5.0.0
+  nuget Microsoft.SourceLink.GitHub prerelease copy_local: true
+  nuget Microsoft.NETFramework.ReferenceAssemblies copy_local: true
+  nuget Expecto
+  nuget YoloDev.Expecto.TestSdk
+  nuget Microsoft.NET.Test.Sdk
+  nuget altcover
+  nuget FSharp.Analyzers.SDK
+  nuget AzureTackle
+  nuget F23.StringSimilarity
+  nuget FParsec
+  nuget TaskBuilder.fs
+  nuget WindowsAzure.Storage
+group Docs
+    storage: none
+    source https://www.nuget.org/api/v2
+    source https://api.nuget.org/v3/index.json
+    nuget Argu
+    nuget FSharp.Core
+    nuget Fake.IO.FileSystem
+    nuget FAKE.Core.Environment
+    nuget Fake.DotNet.Cli
+    nuget FSharp.Literate
+    nuget Fable.React
+    nuget Microsoft.AspNetCore.StaticFiles
+    nuget Microsoft.AspNetCore.Hosting
+    nuget Microsoft.AspNetCore.Server.Kestrel
+    nuget Microsoft.AspNetCore.WebSockets
+    nuget Dotnet.ProjInfo.Workspace.FCS

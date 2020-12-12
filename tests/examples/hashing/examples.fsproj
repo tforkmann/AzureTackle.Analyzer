@@ -1,0 +1,45 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="castingNonNullableStaysNonNullable.fs" />
+    <Compile Include="syntacticAnalysisFromLambdaBody.fs" />
+    <Compile Include="syntacticAnalysisFromSingleCaseUnion.fs" />
+    <Compile Include="topLevelExpressionIsDetected.fs" />
+    <Compile Include="usingLiteralQueriesWithTransactions.fs" />
+    <Compile Include="detectingDynamicListsInTransactions.fs" />
+    <Compile Include="detectingEmptyParameterSet.fs" />
+    <Compile Include="errorsInTransactions.fs" />
+    <Compile Include="syntaxAnalysis-usingTransactions.fs" />
+    <Compile Include="syntaxAnalysis-detectingSkipAnalysis.fs" />
+    <Compile Include="syntaxAnalysisReferencingQueryDoesNotGiveError.fs" />
+    <Compile Include="updateQueryWithParametersInAssignments.fs" />
+    <Compile Include="selectWithInnerJoins.fs" />
+    <Compile Include="selectWithNonNullableColumnComparison.fs" />
+    <Compile Include="insertQueryWithNonNullableParameter.fs" />
+    <Compile Include="executingQueryInsteadOfNonQuery.fs" />
+    <Compile Include="usingIntArrayParameter.fs" />
+    <Compile Include="readingUuidArray.fs" />
+    <Compile Include="readingTextArray.fs" />
+    <Compile Include="SprintfBlock.fs" />
+    <Compile Include="parameterTypeMismatch.fs" />
+    <Compile Include="readAttemptIntegerTypeMismatch.fs" />
+    <Compile Include="syntacticAnalysisSimpleQuery.fs" />
+    <Compile Include="syntacticAnalysisExecuteScalar.fs" />
+    <Compile Include="syntacticAnalysisProcessedList.fs" />
+    <Compile Include="semanticAnalysis-missingColumn.fs" />
+    <Compile Include="semanticAnalysis-missingParameter.fs" />
+    <Compile Include="semanticAnalysis-typeMismatch.fs" />
+    <Compile Include="syntacticAnalysis-literalStrings.fs" />
+    <Compile Include="semanticAnalysis-redundantParameters.fs" />
+    <Compile Include="syntacticAnalysis.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AzureTackle" Version="3.12.2" />
+  </ItemGroup>
+
+</Project>
