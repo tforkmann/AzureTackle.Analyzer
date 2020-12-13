@@ -6,13 +6,12 @@ open System.Data.Common
 open System.Collections.Generic
 
 open FSharp.Quotations
-
-open Npgsql
-open Npgsql.PostgresTypes
-open NpgsqlTypes
-
+open Microsoft.WindowsAzure.Storage.Table
+open AzureTackle
 open System.Collections
 open System.Net
+open Microsoft.WindowsAzure.Storage.Table
+open FSharp.Control.Tasks.ContextInsensitive
 
 module InformationSchema =
     type internal NpgsqlDataReader with
@@ -271,22 +270,17 @@ module InformationSchema =
 
         parameters, outputColumns, enums
 
-    let getDbSchemaLookups(connectionString) =
-        use conn = openConnection(connectionString)
+    let getAzureTableSchemaLookups(connectionString,table) =
+        task {
+        let azureProps =
+            AzureTable.connect connectionString
+            |> AzureTable.table table
 
-        use cmd = conn.CreateCommand()
-        cmd.CommandText <- """
-            SELECT
-              n.nspname              AS schema,
-              t.typname              AS name,
-              array_agg(e.enumlabel) AS values
-            FROM pg_type t
-              JOIN pg_enum e ON t.oid = e.enumtypid
-              JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
-            GROUP BY
-              schema, name
-        """
-
+        let azureTable =
+            match azureProps.AzureTable with
+            | Some table -> table
+            | None -> failwith "please add a table"
+        let! entities =  Table.getResultsRecursivly None azureTable
         let enumsLookup =
             [
                 use cursor = cmd.ExecuteReader()
@@ -303,47 +297,6 @@ module InformationSchema =
             )
             |> Map.ofSeq
 
-        //https://stackoverflow.com/questions/12445608/psql-list-all-tables#12455382
-        use cmd = conn.CreateCommand()
-        cmd.CommandText <- """
-            SELECT
-                 ns.OID AS schema_oid,
-                 ns.nspname AS schema_name,
-                 attr.attrelid AS table_oid,
-                 cls.relname AS table_name,
-                 pg_catalog.obj_description(attr.attrelid) AS table_description,
-                 attr.attnum AS col_number,
-                 attr.attname AS col_name,
-                 col.udt_name AS col_udt_name,
-                 col.data_type AS col_data_type,
-                 attr.attnotnull AS col_not_null,
-                 col.character_maximum_length AS col_max_length,
-                 CASE WHEN col.is_updatable = 'YES' THEN true ELSE false END AS col_is_updatable,
-                 CASE WHEN col.is_identity = 'YES' THEN true else false END AS col_is_identity,
-                 CASE WHEN attr.atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS col_default,
-                 pg_catalog.col_description(attr.attrelid, attr.attnum) AS col_description,
-                 typ.oid AS col_typoid,
-                 EXISTS (
-                   SELECT * FROM pg_index
-                   WHERE pg_index.indrelid = cls.oid AND
-                         pg_index.indisprimary AND
-                         attnum = ANY (indkey)
-                 ) AS col_part_of_primary_key
-
-            FROM pg_class AS cls
-            INNER JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
-
-            LEFT JOIN pg_attribute AS attr ON attr.attrelid = cls.oid AND attr.atttypid <> 0 AND attr.attnum > 0 AND NOT attr.attisdropped
-            LEFT JOIN pg_type AS typ ON typ.oid = attr.atttypid
-            LEFT JOIN information_schema.columns AS col ON col.table_schema = ns.nspname AND
-               col.table_name = relname AND
-               col.column_name = attname
-            WHERE
-               cls.relkind IN ('r', 'v', 'm') AND
-               ns.nspname !~ '^pg_' AND
-               ns.nspname <> 'information_schema'
-            ORDER BY nspname, relname;
-        """
 
         let schemas = Dictionary<string, DbSchemaLookupItem>()
         let columns = Dictionary<ColumnLookupKey, Column>()
@@ -427,3 +380,4 @@ module InformationSchema =
                         sprintf "%s.%s" schemaName enumName, x.Value))
                   |> Seq.concat
                   |> Map.ofSeq }
+    }

@@ -6,9 +6,9 @@
   <ItemGroup>
     <Compile Include="InformationSchema.fs" />
     <Compile Include="Types.fs" />
-    <Compile Include="SyntacticAnalysis.fs" />
+    <!-- <Compile Include="SyntacticAnalysis.fs" />
     <Compile Include="AzureTackleAnalysis.fs" />
-    <Compile Include="AzureTackleAnalyzer.fs" />
+    <Compile Include="AzureTackleAnalyzer.fs" /> -->
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

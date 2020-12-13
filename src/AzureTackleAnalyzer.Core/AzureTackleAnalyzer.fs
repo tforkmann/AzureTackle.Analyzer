@@ -27,7 +27,7 @@ module AzureTableAnalyzer =
     let tryFindConfig (file: string) =
         try
             let parent = (Directory.GetParent file).FullName
-            try Some (Path.Combine(findParent parent "NPGSQL_FSHARP", "NPGSQL_FSHARP"))
+            try Some (Path.Combine(findParent parent "AZURE_TACKLE", "AZURE_TACKLE"))
             with error -> None
         with error ->
             None
@@ -36,6 +36,6 @@ module AzureTableAnalyzer =
         match tryFindConfig fileName with
         | Some config ->
             try (File.ReadAllText config)
-            with error -> Environment.GetEnvironmentVariable "NPGSQL_FSHARP"
+            with error -> Environment.GetEnvironmentVariable "AZURE_TACKLE"
         | None ->
-            Environment.GetEnvironmentVariable "NPGSQL_FSHARP"
+            Environment.GetEnvironmentVariable "AZURE_TACKLE"

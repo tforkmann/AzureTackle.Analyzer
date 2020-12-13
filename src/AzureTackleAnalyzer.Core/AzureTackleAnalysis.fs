@@ -3,11 +3,10 @@ namespace AzureTackle.Analyzers.Core
 open System
 open FSharp.Compiler.Range
 open F23.StringSimilarity
-open AzureTackleParser
 open InformationSchema
 open Microsoft.WindowsAzure.Storage
 
-module SqlAnalysis =
+module AzureTableAnalysis =
 
     type ComparisonParameter = {
         parameterName : string
@@ -138,290 +137,21 @@ module SqlAnalysis =
 
         | expression -> [ ]
 
-    let containsNonInnerJoins (query: SelectExpr) =
-        query.Joins
-        |> List.exists (function
-            | JoinExpr.FullJoin _ -> true
-            | JoinExpr.LeftJoin _ -> true
-            | JoinExpr.RightJoin _ -> true
-            | JoinExpr.InnerJoin _ -> false
-        )
 
 
-    let determineParameterNullability (parameters: Parameter list) (schema: DbSchemaLookups) query =
-        match parseQueryTrimmed query with
-        | Result.Error error -> parameters
-        | Result.Ok (Expr.InsertQuery query) ->
-
-            let findParameter (expr, column) =
-                match expr with
-                | Expr.Parameter parameterName ->
-                    Some (parameterName, column)
-                | _ ->
-                    None
-
-            let insertParameters =
-                query.Columns
-                |> List.zip query.Values
-                |> List.choose findParameter
-
-            let columnNonNullable columnName =
-                schema.Columns
-                |> Seq.exists (fun column -> column.Value.Name = columnName && not column.Value.Nullable)
-
-            parameters
-            |> List.map (fun requiredParameter ->
-                insertParameters
-                |> List.tryFind (fun (parameter, column) -> parameter = requiredParameter.Name && columnNonNullable column)
-                |> function
-                    | None -> requiredParameter
-                    | Some _ -> { requiredParameter with IsNullable = false }
-            )
-
-        | Result.Ok (Expr.UpdateQuery query) ->
-            let columnNonNullable columnName (table: Option<string>) =
-                schema.Columns
-                |> Seq.exists (fun column ->
-                    column.Value.Name = columnName
-                    && not column.Value.Nullable
-                    && table = Some column.Value.BaseTableName
-                )
-
-            let comparisonParameters =
-                match query.Where with
-                | None -> [ ]
-                | Some whereExpr ->
-                    findComparisonParameters whereExpr
-                    |> List.map (fun comparison ->
-                        match comparison.table with
-                        | None -> { comparison with table = Some query.Table }
-                        | _ -> comparison
-                    )
-
-            let updateAssignments =
-                query.Assignments
-                |> List.choose (function
-                    | Expr.Equals(Expr.Ident columnName, Expr.Parameter parameter) ->
-                        Some (parameter, columnName)
-                    | _ ->
-                        None
-                )
-
-            parameters
-            // determine nullability on comparison operators
-            |> List.map (fun requiredParameter ->
-                comparisonParameters
-                |> List.tryFind (fun comparison ->
-                    comparison.parameterName = requiredParameter.Name
-                    && columnNonNullable comparison.column comparison.table)
-                |> function
-                    | None -> requiredParameter
-                    | Some _ -> { requiredParameter with IsNullable = false }
-            )
-            // determine nullability on update assignments
-            |> List.map (fun requiredParameter ->
-                updateAssignments
-                |> List.tryFind (fun (parameter, column) -> parameter = requiredParameter.Name && columnNonNullable column (Some query.Table))
-                |> function
-                    | None -> requiredParameter
-                    | Some _ -> { requiredParameter with IsNullable = false }
-            )
-
-        | Result.Ok (Expr.DeleteQuery query) ->
-            let columnNonNullable columnName (table: Option<string>) =
-                schema.Columns
-                |> Seq.exists (fun column ->
-                    column.Value.Name = columnName
-                    && not column.Value.Nullable
-                    && table = Some column.Value.BaseTableName
-                )
-
-            let comparisonParameters =
-                match query.Where with
-                | None -> [ ]
-                | Some whereExpr ->
-                    findComparisonParameters whereExpr
-                    |> List.map (fun comparison ->
-                        match comparison.table with
-                        | None -> { comparison with table = Some query.Table }
-                        | _ -> comparison
-                    )
-
-            parameters
-            |> List.map (fun requiredParameter ->
-                comparisonParameters
-                |> List.tryFind (fun comparison ->
-                    comparison.parameterName = requiredParameter.Name
-                    && columnNonNullable comparison.column comparison.table)
-                |> function
-                    | None -> requiredParameter
-                    | Some _ -> { requiredParameter with IsNullable = false }
-            )
 
 
-        | Result.Ok (Expr.SelectQuery query) ->
-            if containsNonInnerJoins query || query.From.IsNone then
-                // When query includes non-INNER JOINS, things get complicated
-                // Implement later...
-                parameters
-
-            else
-
-                let columnNonNullable columnName (table: Option<string>) =
-                    schema.Columns
-                    |> Seq.exists (fun column ->
-                        column.Value.Name = columnName
-                        && not column.Value.Nullable
-                        && table = Some column.Value.BaseTableName
-                    )
-
-                let comparisonParameters =
-                    match query.Where with
-                    | None -> [ ]
-                    | Some whereExpr ->
-                        findComparisonParameters whereExpr
-                        |> List.map (fun comparison ->
-                            match comparison.table, query.From with
-                            | None, Some (Expr.Ident table) ->
-                                { comparison with table = Some table }
-                            | None, Some (Expr.As(Expr.Ident table, alias)) ->
-                                { comparison with table = Some table }
-                            | _ ->
-                                comparison
-                        )
-
-                parameters
-                |> List.map (fun requiredParameter ->
-                    comparisonParameters
-                    |> List.tryFind (fun comparison ->
-                        comparison.parameterName = requiredParameter.Name
-                        && columnNonNullable comparison.column comparison.table)
-                    |> function
-                        | None -> requiredParameter
-                        | Some _ -> { requiredParameter with IsNullable = false }
-                )
-
-        | Result.Ok expr ->
-            parameters
-
-    let missingInsertColumns (schema: DbSchemaLookups) (query:string) =
-        match Parser.parse query with
-        | Result.Error _ -> None
-        | Result.Ok expression ->
-            match expression with
-            | Expr.InsertQuery insertQuery ->
-                let missingInsertColumns =
-                    schema.Columns.Values
-                    |> Seq.filter (fun column -> column.BaseTableName = insertQuery.Table && not column.OptionalForInsert)
-                    |> Seq.filter (fun column -> not (List.contains column.Name insertQuery.Columns))
-
-                if Seq.isEmpty missingInsertColumns then
-                    None
-                else
-                    let errorMessage =
-                        missingInsertColumns
-                        |> Seq.map (fun column -> sprintf "'%s'" column.Name)
-                        |> Seq.toList
-                        |> function
-                             | [ ] -> "<empty>"
-                             | [ first ] -> first
-                             | [ first; second ] -> sprintf "%s and %s" first second
-                             | columns ->
-                                 let lastColumn = List.last columns
-                                 let firstColumns =
-                                     columns
-                                     |> List.rev
-                                     |> List.skip 1
-                                     |> List.rev
-                                     |> String.concat ", "
-
-                                 sprintf "%s and %s" firstColumns lastColumn
-
-                        |> fun columns -> sprintf "INSERT query is missing required columns %s when adding rows to the '%s' table" columns insertQuery.Table
-
-                    Some errorMessage
-            | _ ->
-                None
-
-    // When casting columns during a select statement, if the original column is non-nullable
-    // then the computed column somehow becomes nullable when we ask the database for its type
-    // for example
-    //      user_id int not null -> inferred non-nullable
-    //      user_id::text -> inferred nullable
-    //
-    // This function resolves the correct nullability and infers non-nullable columns to be returned as such
-    let resolveColumnNullability (commandText: string) (schema: DbSchemaLookups) (columns: Column list) =
-        match Parser.parse commandText with
-        | Result.Ok (Expr.SelectQuery selectQuery) ->
-            let schemaColumns =
-                schema.Columns
-                |> Seq.map (fun pair -> pair.Value)
-                |> Seq.toList
-
-            columns
-            |> List.map (fun column ->
-                let originalColumnNameAndAlias =
-                    selectQuery.Columns
-                    |> List.tryPick (function
-                        // find columns expressions of the shape
-                        // {originalName}::{typeName} AS {alias}
-                        | Expr.As(Expr.TypeCast(Expr.Ident originalName, Expr.Ident typeName), Expr.Ident alias) ->
-                            Some (originalName, alias, false)
-                        // 1::{typeName} AS {alias}
-                        | Expr.As(Expr.TypeCast(Expr.Integer _, Expr.Ident typeName), Expr.Ident alias) ->
-                            Some (column.Name, column.Name, true)
-                        // {originalName}::{typeName}
-                        | Expr.TypeCast(Expr.Ident originalName, Expr.Ident typeName) ->
-                            Some (originalName, originalName, false)
-                        // 1::{typeName}
-                        | Expr.TypeCast(Expr.Integer _, Expr.Ident typeName) ->
-                            Some (column.Name, column.Name, true)
-                        // "text"::{typeName}
-                        | Expr.TypeCast(Expr.StringLiteral _, Expr.Ident typeName) ->
-                            Some (column.Name, column.Name, true)
-                        // 1 as {alias}
-                        | Expr.As(Expr.Integer _, Expr.Ident alias) ->
-                            Some (alias, alias, true)
-                        // "text" AS alias
-                        | Expr.As(Expr.StringLiteral _, Expr.Ident alias) ->
-                            Some (alias, alias, true)
-                        | _ ->
-                            None
-                    )
-
-                match originalColumnNameAndAlias with
-                | None -> column
-                | Some (name, alias, isConst) when isConst-> { column with Nullable = false }
-                | Some (name, alias, isConst) ->
-                    schemaColumns
-                    |> List.tryFind (fun columnSchema -> columnSchema.Name = name && alias = column.Name)
-                    |> function
-                        | None -> column
-                        | Some columnSchema ->
-                            { column with
-                                Nullable = columnSchema.Nullable
-                                DefaultConstraint = columnSchema.DefaultConstraint
-                                PartOfPrimaryKey = columnSchema.PartOfPrimaryKey
-                                BaseTableName = column.BaseTableName
-                                BaseSchemaName = column.BaseSchemaName }
-            )
-        | _ ->
-            columns
-
-    let extractParametersAndOutputColumns(connectionString, commandText, dbSchemaLookups) =
-        try
-            let parameters, output, enums = InformationSchema.extractParametersAndOutputColumns(connectionString, commandText, false, dbSchemaLookups)
-            let parametersWithNullability = determineParameterNullability parameters dbSchemaLookups commandText
-            let potentiallyMissingColumns = missingInsertColumns dbSchemaLookups commandText
-            let rewrittenColumns = resolveColumnNullability commandText dbSchemaLookups output
-            Result.Ok (parametersWithNullability, rewrittenColumns, potentiallyMissingColumns)
-        with
-        | :? PostgresException as databaseError ->
-            // errors such as syntax errors are reported here
-            Result.Error (sprintf "%s: %s" databaseError.Severity databaseError.MessageText)
-        | error ->
-            // any other generic error
-            Result.Error (sprintf "%s\n%s" error.Message error.StackTrace)
+    // let extractParametersAndOutputColumns(connectionString, commandText, dbSchemaLookups) =
+    //     try
+    //         let parameters, output, enums = extractParametersAndOutputColumns(connectionString, commandText, false, dbSchemaLookups)
+    //         Result.Ok (parametersWithNullability, rewrittenColumns, potentiallyMissingColumns)
+    //     with
+    //     | :? StorageException as databaseError ->
+    //         // errors such as syntax errors are reported here
+    //         Result.Error (sprintf "%s: %s" databaseError.StackTrace databaseError.Message)
+    //     | error ->
+    //         // any other generic error
+    //         Result.Error (sprintf "%s\n%s" error.Message error.StackTrace)
 
     let createWarning (message: string) (range: range) : Message =
         { Message = message;

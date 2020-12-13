@@ -406,8 +406,6 @@ module SyntacticAnalysis =
             [ yield! findReadColumnAttempts funcExpr; yield! findReadColumnAttempts argExpr ]
         | SynExpr.Paren(expr, leftRange, rightRange, range) ->
             [ yield! findReadColumnAttempts expr ]
-        | SynExpr.Lambda(fromMethod, inLambdaSeq, args, body, range) ->
-            [ yield! findReadColumnAttempts body ]
         | SynExpr.LetOrUse(isRecursive, isUse, bindings, body, range) ->
              [ yield! findReadColumnAttempts body
                for binding in bindings do
@@ -462,11 +460,6 @@ module SyntacticAnalysis =
                 match thenExpr with
                 | Some expr -> yield! findReadColumnAttempts expr
                 | None -> ()
-            ]
-
-        | SynExpr.Lambda(_, _, args, body, range) ->
-            [
-                yield! findReadColumnAttempts body
             ]
 
         | SynExpr.Lazy(body, range) ->
@@ -642,9 +635,6 @@ module SyntacticAnalysis =
                 | None -> ()
                 | Some expr -> yield! visitSyntacticExpression expr range
             ]
-
-        | SynExpr.Lambda (fromMethod, inSeq, args, body, range) ->
-            visitSyntacticExpression body range
 
         | SynExpr.Sequential (debugSeqPoint, isTrueSeq, expr1, expr2, range) ->
             [
