@@ -2,7 +2,7 @@
 namespace System
 open System.Reflection
 
-[<assembly: AssemblyTitleAttribute("AzureTackleAnalyzer")>]
+[<assembly: AssemblyTitleAttribute("AzureTackleAnalyzer.Tests")>]
 [<assembly: AssemblyProductAttribute("AzureTackleAnalyzer")>]
 [<assembly: AssemblyVersionAttribute("0.1.0")>]
 [<assembly: AssemblyMetadataAttribute("ReleaseDate","2020-12-12T00:00:00.0000000")>]
@@ -13,7 +13,7 @@ open System.Reflection
 do ()
 
 module internal AssemblyVersionInformation =
-    let [<Literal>] AssemblyTitle = "AzureTackleAnalyzer"
+    let [<Literal>] AssemblyTitle = "AzureTackleAnalyzer.Tests"
     let [<Literal>] AssemblyProduct = "AzureTackleAnalyzer"
     let [<Literal>] AssemblyVersion = "0.1.0"
     let [<Literal>] AssemblyMetadata_ReleaseDate = "2020-12-12T00:00:00.0000000"

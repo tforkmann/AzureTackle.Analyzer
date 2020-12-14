@@ -3,3 +3,4 @@ group AzureTackleAnalyzer
   WindowsAzure.Storage
   FSharp.Core
   Expecto
+  AzureTackle

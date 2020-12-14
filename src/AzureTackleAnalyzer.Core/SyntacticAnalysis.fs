@@ -6,6 +6,7 @@ open FSharp.Compiler.Range
 
 module SyntacticAnalysis =
 
+
     let (|FuncName|_|) = function
         | SynExpr.Ident ident -> Some (ident.idText)
         | SynExpr.LongIdent(isOptional, longDotId, altName, range) ->
@@ -84,8 +85,8 @@ module SyntacticAnalysis =
         | expr ->
             [ expr ]
 
-    let (|SqlParameters|_|) = function
-        | Apply ("Sql.parameters", SynExpr.ArrayOrListOfSeqExpr(isArray, listExpr, listRange) , funcRange, appRange) ->
+    let (|AzureFilters|_|) = function
+        | Apply ("AzureTable.filter", SynExpr.ArrayOrListOfSeqExpr(isArray, listExpr, listRange) , funcRange, appRange) ->
             match listExpr with
             | SynExpr.CompExpr(isArrayOfList, isNotNakedRefCell, compExpr, compRange) ->
                 Some (readParameters compExpr, compRange)
@@ -94,8 +95,8 @@ module SyntacticAnalysis =
         | _ ->
             None
 
-    let readParameterSets parameterSetsExpr =
-        let sets = ResizeArray<ParameterSet>()
+    let readFilterSets parameterSetsExpr =
+        let sets = ResizeArray<FilterSet>()
 
         match parameterSetsExpr with
         | SynExpr.ArrayOrListOfSeqExpr(isArray, listExpr, listRange) ->
@@ -109,12 +110,12 @@ module SyntacticAnalysis =
                         | SynExpr.ArrayOrListOfSeqExpr(isArray, parameterListExpr, parameterListRange) ->
                             let parameterSet = {
                                 range = parameterListRange
-                                parameters = [ ]
+                                filters = [ ]
                             }
 
                             match parameterListExpr with
                             | SynExpr.CompExpr(isArrayOfList, isNotNakedRefCell, compExpr, compRange) ->
-                                let parameters : UsedParameter list = [
+                                let filters : UsedFilter list = [
                                     for expr in flattenList compExpr do
                                         match expr with
                                         | ParameterTuple(name, range, func, funcRange, appRange) ->
@@ -129,13 +130,13 @@ module SyntacticAnalysis =
                                             ()
                                 ]
 
-                                sets.Add { parameterSet with parameters = parameters }
+                                sets.Add { parameterSet with filters = filters }
 
                             | _ ->
                                 ()
 
                         | SynExpr.ArrayOrList(isList, expressions, range) ->
-                            let parameters : UsedParameter list = [
+                            let filters : UsedFilter list = [
                                 for expr in expressions do
                                     match expr with
                                     | ParameterTuple(name, range, func, funcRange, appRange) ->
@@ -152,7 +153,7 @@ module SyntacticAnalysis =
 
                             sets.Add {
                                 range = range
-                                parameters = parameters
+                                filters = filters
                             }
 
                         | _ ->
@@ -167,12 +168,12 @@ module SyntacticAnalysis =
                         | SynExpr.ArrayOrListOfSeqExpr(isArray, parameterListExpr, parameterListRange) ->
                             let parameterSet = {
                                 range = parameterListRange
-                                parameters = [ ]
+                                filters = [ ]
                             }
 
                             match parameterListExpr with
                             | SynExpr.CompExpr(isArrayOfList, isNotNakedRefCell, compExpr, compRange) ->
-                                let parameters : UsedParameter list = [
+                                let filters : UsedFilter list = [
                                     for expr in flattenList compExpr do
                                         match expr with
                                         | ParameterTuple(name, range, func, funcRange, appRange) ->
@@ -187,13 +188,13 @@ module SyntacticAnalysis =
                                             ()
                                 ]
 
-                                sets.Add { parameterSet with parameters = parameters }
+                                sets.Add { parameterSet with filters = filters }
 
                             | _ ->
                                 ()
 
                         | SynExpr.ArrayOrList(isList, expressions, range) ->
-                            let parameters : UsedParameter list = [
+                            let filters : UsedFilter list = [
                                 for expr in expressions do
                                     match expr with
                                     | ParameterTuple(name, range, func, funcRange, appRange) ->
@@ -210,7 +211,7 @@ module SyntacticAnalysis =
 
                             sets.Add {
                                 range = range
-                                parameters = parameters
+                                filters = filters
                             }
 
                         | _ ->
@@ -223,20 +224,20 @@ module SyntacticAnalysis =
         Seq.toList sets
 
     let (|TransactionQuery|_|) = function
-        | SynExpr.Tuple(isStruct, [ SynExpr.Const(SynConst.String(query, queryRange), constRange); parameterSetsExpr ], commaRange, tupleRange) ->
+        | SynExpr.Tuple(isStruct, [ SynExpr.Const(SynConst.String(query, queryRange), constRange); filterSetsExpr ], commaRange, tupleRange) ->
             let transaction =  {
                 query = query;
                 queryRange = queryRange
-                parameterSets = readParameterSets parameterSetsExpr
+                filterSets = readFilterSets filterSetsExpr
             }
 
             Some transaction
 
-        | SynExpr.Tuple(isStruct, [ SynExpr.Ident value; parameterSetsExpr ], commaRange, tupleRange) ->
+        | SynExpr.Tuple(isStruct, [ SynExpr.Ident value; filterSetsExpr ], commaRange, tupleRange) ->
             let transaction =  {
                 query = value.idText;
                 queryRange = value.idRange
-                parameterSets = readParameterSets parameterSetsExpr
+                filterSets = readFilterSets filterSetsExpr
             }
 
             Some transaction
@@ -254,19 +255,9 @@ module SyntacticAnalysis =
         | _ ->
             [ ]
 
-    let (|SqlExecuteTransaction|_|) = function
-        | Apply (("Sql.executeTransaction"|"Sql.executeTransactionAsync"), SynExpr.ArrayOrListOfSeqExpr(isArray, listExpr, listRange) , funcRange, appRange) ->
-            match listExpr with
-            | SynExpr.CompExpr(isArrayOfList, isNotNakedRefCell, compExpr, compRange) ->
-                Some (readTransactionQueries compExpr)
-            | _ ->
-                None
-        | _ ->
-            None
-
     let (|ReadColumnAttempt|_|) = function
         | Apply(funcName, SynExpr.Const(SynConst.String(columnName, queryRange), constRange), funcRange, appRange) ->
-            if funcName.StartsWith "Sql.read" && funcName <> "Sql.readRow"
+            if funcName.StartsWith "AzureTable.read" && funcName <> "AzureTable.readRow"
             then Some {
                 funcName = funcName
                 columnName = columnName
@@ -328,66 +319,51 @@ module SyntacticAnalysis =
 
     /// Detects `Sql.query {SQL}` pattern
     let (|SqlQuery|_|) = function
-        | Apply("Sql.query", SynExpr.Const(SynConst.String(query, queryRange), constRange), range, appRange) ->
+        | Apply("AzureTable.query", SynExpr.Const(SynConst.String(query, queryRange), constRange), range, appRange) ->
             Some (query, constRange)
         | _ ->
             None
 
     let (|LiteralQuery|_|) = function
-        | Apply("Sql.query", SynExpr.Ident(identifier), funcRange, appRange) ->
+        | Apply("AzureTable.query", SynExpr.Ident(identifier), funcRange, appRange) ->
             Some (identifier.idText, funcRange)
         | _ ->
             None
 
     let (|SqlStoredProcedure|_|) = function
-        | Apply("Sql.func", SynExpr.Const(SynConst.String(funcName, funcNameRange), constRange), funcRange, appRange) ->
+        | Apply("AzureTable.func", SynExpr.Const(SynConst.String(funcName, funcNameRange), constRange), funcRange, appRange) ->
             Some (funcName, constRange)
         | _ ->
             None
 
     let rec findQuery = function
         | SqlQuery (query, range) ->
-            [ AzureTableAnalyzerBlock.Query(query, range) ]
-        | LiteralQuery (identifier, range) ->
-            [ AzureTableAnalyzerBlock.LiteralQuery(identifier, range) ]
+            [ AzureAnalyzerBlock.TableQuery(query, range) ]
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
             [ yield! findQuery funcExpr; yield! findQuery argExpr ]
         | _ ->
             [ ]
 
-    let rec findSkipAnalysis expr =
-        match expr with
-        | Applied("Sql.skipAnalysis", range, appRange) ->
-            [ AzureTableAnalyzerBlock.SkipAnalysis ]
-        | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
-            [ yield! findSkipAnalysis funcExpr; yield! findSkipAnalysis argExpr ]
-        | _ ->
-            [ ]
-
     let rec findFunc = function
-        | SqlStoredProcedure (funcName, range) ->
-            [ AzureTableAnalyzerBlock.StoredProcedure(funcName, range) ]
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
             [ yield! findFunc funcExpr; yield! findFunc argExpr ]
         | _ ->
             [ ]
 
-    let rec findParameters = function
-        | SqlParameters(parameters, range) ->
-            let sqlParameters =
-                parameters
+    let rec findFilters = function
+        | AzureFilters(filters, range) ->
+            let filters =
+                filters
                 |> List.map (fun (name, range, func, funcRange, appRange) -> { name = name.Trim().TrimStart('@'); range = range; paramFunc = func; paramFuncRange = funcRange; applicationRange = appRange })
-            [ AzureTableAnalyzerBlock.Parameters(sqlParameters, range) ]
+            [ AzureAnalyzerBlock.Filters(filters, range) ]
 
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
-            [ yield! findParameters funcExpr; yield! findParameters argExpr ]
+            [ yield! findFilters funcExpr; yield! findFilters argExpr ]
 
         | _ ->
             [ ]
 
     let rec findExecuteTransaction = function
-        | SqlExecuteTransaction transactionQueries ->
-            [ AzureTableAnalyzerBlock.Transaction transactionQueries ]
 
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
             [
@@ -406,6 +382,8 @@ module SyntacticAnalysis =
             [ yield! findReadColumnAttempts funcExpr; yield! findReadColumnAttempts argExpr ]
         | SynExpr.Paren(expr, leftRange, rightRange, range) ->
             [ yield! findReadColumnAttempts expr ]
+        // | SynExpr.Lambda(fromMethod, inLambdaSeq, args, body, range) ->
+        //     [ yield! findReadColumnAttempts body ]
         | SynExpr.LetOrUse(isRecursive, isUse, bindings, body, range) ->
              [ yield! findReadColumnAttempts body
                for binding in bindings do
@@ -462,6 +440,11 @@ module SyntacticAnalysis =
                 | None -> ()
             ]
 
+        // | SynExpr.Lambda(_, _, args, body, range) ->
+        //     [
+        //         yield! findReadColumnAttempts body
+        //     ]
+
         | SynExpr.Lazy(body, range) ->
             [
                 yield! findReadColumnAttempts body
@@ -514,26 +497,24 @@ module SyntacticAnalysis =
             match argExpr with
             | SynExpr.CompExpr(isArrayOrList, _, innerExpr, range) ->
                 visitSyntacticExpression innerExpr range
-            | Apply(("Sql.executeReader"|"Sql.executeReaderAsync"), lambdaExpr, _, appRange) ->
+            | Apply(("AzureTable.executeReader"|"AzureTable.executeReaderAsync"), lambdaExpr, _, appRange) ->
                 let columns = findReadColumnAttempts lambdaExpr
                 let blocks = [
                     yield! findQuery funcExpr
-                    yield! findParameters funcExpr
+                    yield! findFilters funcExpr
                     yield! findFunc funcExpr
-                    yield! findSkipAnalysis funcExpr
-                    yield AzureTableAnalyzerBlock.ReadingColumns columns
+                    yield AzureAnalyzerBlock.ReadingColumns columns
                 ]
 
                 [ { blocks = blocks; range = range; } ]
 
-            | Apply(("Sql.execute"|"Sql.executeAsync"|"Sql.executeRow"|"Sql.executeRowAsync"|"Sql.iter"|"Sql.iterAsync"), lambdaExpr, funcRange, appRange) ->
+            | Apply(("AzureTable.execute"|"AzureTable.executeAsync"|"AzureTable.executeRow"|"AzureTable.executeRowAsync"|"AzureTable.iter"|"AzureTable.iterAsync"), lambdaExpr, funcRange, appRange) ->
                 let columns = findReadColumnAttempts lambdaExpr
                 let blocks = [
                     yield! findQuery funcExpr
-                    yield! findParameters funcExpr
+                    yield! findFilters funcExpr
                     yield! findFunc funcExpr
-                    yield! findSkipAnalysis funcExpr
-                    yield AzureTableAnalyzerBlock.ReadingColumns columns
+                    yield AzureAnalyzerBlock.ReadingColumns columns
                 ]
 
                 [ { blocks = blocks; range = range; } ]
@@ -541,38 +522,19 @@ module SyntacticAnalysis =
             | SqlQuery(query, queryRange) ->
 
                 let blocks = [
-                    AzureTableAnalyzerBlock.Query(query, queryRange)
+                    AzureAnalyzerBlock.TableQuery(query, queryRange)
                 ]
 
                 [ { blocks = blocks; range = range; } ]
 
-            | LiteralQuery(identifier, queryRange) ->
-                let blocks = [
-                    AzureTableAnalyzerBlock.LiteralQuery(identifier, queryRange)
-                ]
-
-                [ { blocks = blocks; range = range; } ]
-
-            | SqlParameters(parameters, range) ->
-                let sqlParameters =
-                    parameters
+            | AzureFilters(filters, range) ->
+                let azureFilters =
+                    filters
                     |> List.map (fun (name, range, func, funcRange, appRange) -> { name = name.Trim().TrimStart('@'); range = range; paramFunc = func; paramFuncRange = funcRange; applicationRange = appRange })
 
                 let blocks = [
                     yield! findQuery funcExpr
-                    yield! findSkipAnalysis funcExpr
-                    yield AzureTableAnalyzerBlock.Parameters(sqlParameters, range)
-                ]
-
-                [ { blocks = blocks; range = range; } ]
-
-            | SqlExecuteTransaction (transactionQueries) ->
-                let blocks = [
-                    yield! findFunc funcExpr
-                    yield! findQuery funcExpr
-                    yield! findParameters funcExpr
-                    yield! findSkipAnalysis funcExpr
-                    yield AzureTableAnalyzerBlock.Transaction transactionQueries
+                    yield AzureAnalyzerBlock.Filters(azureFilters, range)
                 ]
 
                 [ { blocks = blocks; range = range; } ]
@@ -581,19 +543,7 @@ module SyntacticAnalysis =
                 let blocks = [
                     yield! findFunc funcExpr
                     yield! findQuery funcExpr
-                    yield! findParameters funcExpr
-                    yield! findSkipAnalysis funcExpr
-                ]
-
-                [ { blocks = blocks; range = range; } ]
-
-            | Apply("Sql.skipAnalysis", functionArg, range, appRange) ->
-                let blocks = [
-                    yield! findFunc funcExpr
-                    yield! findQuery funcExpr
-                    yield! findParameters funcExpr
-                    yield AzureTableAnalyzerBlock.SkipAnalysis
-                    yield AzureTableAnalyzerBlock.ReadingColumns (findReadColumnAttempts funcExpr)
+                    yield! findFilters funcExpr
                 ]
 
                 [ { blocks = blocks; range = range; } ]
@@ -602,9 +552,8 @@ module SyntacticAnalysis =
                 let blocks = [
                     yield! findFunc funcExpr
                     yield! findQuery funcExpr
-                    yield! findParameters funcExpr
-                    yield! findSkipAnalysis funcExpr
-                    yield AzureTableAnalyzerBlock.ReadingColumns (findReadColumnAttempts funcExpr)
+                    yield! findFilters funcExpr
+                    yield AzureAnalyzerBlock.ReadingColumns (findReadColumnAttempts funcExpr)
                 ]
 
                 [ { blocks = blocks; range = range; } ]
@@ -636,6 +585,9 @@ module SyntacticAnalysis =
                 | Some expr -> yield! visitSyntacticExpression expr range
             ]
 
+        // | SynExpr.Lambda (fromMethod, inSeq, args, body, range) ->
+        //     visitSyntacticExpression body range
+
         | SynExpr.Sequential (debugSeqPoint, isTrueSeq, expr1, expr2, range) ->
             [
                 yield! visitSyntacticExpression expr1 range
@@ -645,7 +597,7 @@ module SyntacticAnalysis =
         | otherwise ->
             [ ]
 
-    and visitBinding (binding: SynBinding) : SqlOperation list =
+    and visitBinding (binding: SynBinding) : AzureOperation list =
         match binding with
         | SynBinding.Binding (access, kind, mustInline, isMutable, attrs, xmlDecl, valData, headPat, returnInfo, expr, range, seqPoint) ->
             visitSyntacticExpression expr range
@@ -661,33 +613,16 @@ module SyntacticAnalysis =
         Map.ofSeq values
 
     /// Tries to replace [<Literal>] strings inside the module with the identifiers that were used with Sql.query.
-    let applyLiterals (literals: Map<string, string>) (operation: SqlOperation) =
+    let applyLiterals (literals: Map<string, string>) (operation: AzureOperation) =
         let modifiedBlocks =
             operation.blocks
             |> List.choose (function
-                | AzureTableAnalyzerBlock.LiteralQuery(identifier, range) ->
-                    match literals.TryFind identifier with
-                    | Some literalQuery -> Some (AzureTableAnalyzerBlock.Query(literalQuery, range))
-                    | None -> None
-
-                | AzureTableAnalyzerBlock.Transaction queries ->
-                    let modifiedQueries =
-                        queries
-                        |> List.map (fun transactionQuery ->
-                            match literals.TryFind transactionQuery.query with
-                            | Some literalQuery -> { transactionQuery with query = literalQuery }
-                            | None -> transactionQuery
-                        )
-
-                    Some (AzureTableAnalyzerBlock.Transaction modifiedQueries)
-
                 | differentBlock ->
                     Some differentBlock)
 
         { operation with blocks = modifiedBlocks }
-
-    let findSqlOperations (ctx: AzureTableAnalyzerContext) =
-        let operations = ResizeArray<SqlOperation>()
+    let findAzureOperations (ctx: AzureTableAnalyzerContext) =
+        let operations = ResizeArray<AzureOperation>()
         match ctx.ParseTree with
         | ParsedInput.ImplFile input ->
             match input with

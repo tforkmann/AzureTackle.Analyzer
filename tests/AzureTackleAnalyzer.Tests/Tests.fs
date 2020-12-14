@@ -11,11 +11,11 @@ let analyzers = [
 ]
 
 let inline find file = IO.Path.Combine(__SOURCE_DIRECTORY__ , file)
-let project = IO.Path.Combine(__SOURCE_DIRECTORY__, "../examples/hashing/examples.fsproj")
+let project = IO.Path.Combine(__SOURCE_DIRECTORY__, "../examples/hashing/Examples.fsproj")
 
 let raiseWhenFailed = function
-    | Result.Ok _ -> ()
-    | Result.Error error -> raise error
+    | Ok _ -> ()
+    | Error error -> raise error
 
 let inline context file =
     AnalyzerBootstrap.context file
@@ -54,20 +54,10 @@ let tests =
                         Text = read.string "Text" })
 
 
-            match context (find "../examples/ReadingAzureTable.fs") with
-            | None -> failwith "Could not crack project"
-            | Some context ->
-                match AzureTableAnalysis.databaseSchema connectionString with
-                | Result.Error connectionError ->
-                    failwith connectionError
-                | Result.Ok schema ->
-                    let operation = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
-                    let messages = AzureTableAnalysis.analyzeOperation operation connectionString schema
-                    match messages with
-                    | [ message ] ->
-                        Expect.stringContains message.Message "Please use read.stringArray instead" "Message contains suggestion to use Sql.stringArray"
-                    | _ ->
-                        failwith "Expected only one error message"
+            let! databaseMetadata = InformationSchema.getAzureTableEntity (connectionString,TestTable)
+
+            let! tableInfo = InformationSchema.extractTableInfo(connectionString,TestTable)
+            Expect.equal 4 (tableInfo |> Array.length) "There are 4 columns in users table"
         }
 
 

@@ -10,6 +10,7 @@ nuget Fake.DotNet.AssemblyInfoFile
 nuget Fake.Tools.Git
 nuget Fake.DotNet.Paket
 nuget Fake.Api.GitHub
+nuget Fake.Core.UserInput
 nuget Fake.BuildServer.AppVeyor
 nuget Fake.BuildServer.Travis
 nuget Fantomas
@@ -41,7 +42,15 @@ open Fake.BuildServer
 open Fantomas
 open Fantomas.Extras.FakeHelpers
 
-
+open System.IO
+open Fake.Core
+open Fake.DotNet
+open Fake.IO
+open Fake.Core.TargetOperators
+open Fake.IO.Globbing.Operators
+open Fake.Tools
+open Fake.IO.FileSystemOperators
+open Fake.Core.TargetOperators
 BuildServer.install [
     AppVeyor.Installer
     Travis.Installer
@@ -318,12 +327,15 @@ let dotnetPack ctx =
         | _ ->
             ()
 
+let getBuildParam = Environment.environVar
+let isNullOrWhiteSpace = String.IsNullOrWhiteSpace
+
 let publishToNuget _ =
     let nugetKey =
-        match Environment.environVarOrNone "NUGET_KEY" with
-        | Some nugetKey -> nugetKey
-        | None -> failwith "The Nuget API key must be set in a NUGET_KEY environmental variable"
-
+        //Environment.environVarOrFail "nugetKey"
+        match getBuildParam "nugetkey" with
+        | s when not (isNullOrWhiteSpace s) -> s
+        | _ -> UserInput.getUserPassword "NuGet Key: "
     let nupkg =
         System.IO.Directory.GetFiles(__SOURCE_DIRECTORY__ </> "dist")
         |> Seq.head

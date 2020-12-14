@@ -5,9 +5,10 @@ open FSharp.Compiler.Range
 open FSharp.Compiler.SyntaxTree
 open FSharp.Compiler.SourceCodeServices
 
+
 type AzureTableAnalyzerContext =
     { FileName: string
-      Content: string[]
+      Content: string []
       ParseTree: ParsedInput
       Symbols: FSharpEntity list }
 
@@ -34,43 +35,35 @@ type Message =
         member self.IsInfo() = self.Severity = Info
         member self.IsError() = self.Severity = Error
 
-type ColumnReadAttempt = {
-    funcName: string;
-    columnName: string;
-    columnNameRange : range
-    funcCallRange: range
-}
+type ColumnReadAttempt =
+    { funcName: string
+      columnName: string
+      columnNameRange: range
+      funcCallRange: range }
 
-type UsedParameter = {
+type UsedFilter = {
     name : string
     range : range
     paramFunc : string
     paramFuncRange : range
     applicationRange : range option
 }
-
-type ParameterSet = {
-    parameters : UsedParameter list
+type FilterSet = {
+    filters : UsedFilter list
     range : range
 }
 
 type TransactionQuery = {
     query: string
     queryRange : range
-    parameterSets : ParameterSet list
+    filterSets : FilterSet list
 }
-
 [<RequireQualifiedAccess>]
-type AzureTableAnalyzerBlock =
-    | Query of string * range
-    | LiteralQuery of ident:string * range
-    | StoredProcedure of string * range
-    | Parameters of UsedParameter list *  range
+type AzureAnalyzerBlock =
+    | TableQuery of string * range
     | ReadingColumns of ColumnReadAttempt list
-    | Transaction of TransactionQuery list
-    | SkipAnalysis
+    | Filters of UsedFilter list *  range
 
-type SqlOperation = {
-    blocks : AzureTableAnalyzerBlock list
-    range : range
-}
+type AzureOperation =
+    { blocks: AzureAnalyzerBlock list
+      range: range }
