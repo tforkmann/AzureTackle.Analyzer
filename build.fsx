@@ -334,190 +334,122 @@ Target.create "PrepareRelease" (fun _ ->
      Git.Branches.pushTag "" "origin" tagName
  )
 
-Target.create "Pack" (fun _ ->
-     let nugetVersion = release.NugetVersion
+let dotnetPack ctx =
+    Shell.cleanDir (__SOURCE_DIRECTORY__ </> "dist")
 
-     let pack project =
-         let projectPath = sprintf "src/%s/%s.fsproj" project project
-         let args =
-             let defaultArgs = MSBuild.CliArguments.Create()
-             { defaultArgs with
-                       Properties = [
-                           "Title", project
-                           "PackageVersion", nugetVersion
-                           "Authors", (String.Join(" ", authors))
-                           "Owners", owner
-                           "PackageRequireLicenseAcceptance", "false"
-                           "Description", description
-                           "Summary", summary
-                           "PackageReleaseNotes", ((String.toLines release.Notes).Replace(",",""))
-                           "Copyright", copyright
-                           "PackageTags", tags
-                           "PackageProjectUrl", projectUrl
-                           "PackageIconUrl", iconUrl
-                           "PackageLicenseUrl", licenceUrl
-                       ] }
+    let args =
+        [
+            "pack"
+            "--configuration Release"
+            sprintf "/p:PackageVersion=%s" releaseNotes.NugetVersion
+            sprintf "/p:PackageReleaseNotes=\"%s\"" (String.concat "\n" releaseNotes.Notes)
+            sprintf "--output %s" (__SOURCE_DIRECTORY__ </> "dist")
+        ]
 
-         DotNet.pack (fun p ->
-             { p with
-                   NoBuild = false
-                   Configuration = configuration
-                   OutputPath = Some "build"
-                   MSBuildParams = args
-               }) projectPath
+    let exitCode = Shell.Exec("dotnet", String.concat " " args, "src" </> "AzureTackleAnalyzer")
+    if exitCode <> 0 then
+        failwith "dotnet pack failed"
+    else
+        match Shell.Exec("dotnet", "publish -c Release --framework net5.0", "src" </> "AzureTackleAnalyzer") with
+        | 0 ->
+            let nupkg =
+                System.IO.Directory.GetFiles(__SOURCE_DIRECTORY__ </> "dist")
+                |> Seq.head
+                |> IO.Path.GetFullPath
 
-     pack "AzureTackleAnalyzer"
-     pack "AzureTackleAnalyzer.Core"
- )
+            let nugetParent = DirectoryInfo(nupkg).Parent.FullName
+            let nugetFileName = IO.Path.GetFileNameWithoutExtension(nupkg)
+
+            let publishPath = "src" </> "AzureTackleAnalyzer" </> "bin" </> "Release" </> "net5.0" </> "publish"
+            ZipFile.ExtractToDirectory(nupkg, nugetParent </> nugetFileName)
+            let nuspecFile = nugetParent </> nugetFileName </> "AzureTackleAnalyzer.nuspec"
+            // rewriteNuspec
+            nuspecFile
+            |> File.ReadAllLines
+            |> Array.choose (fun line ->
+                if line.Contains """<dependency id=\"AzureTackleAnalyzer.Core\"""
+                then None
+                else Some line)
+            |> fun content -> File.WriteAllLines(nuspecFile, content)
+
+            File.Delete nupkg
+            Shell.deleteDir (nugetParent </> nugetFileName </> "lib" </> "net5.0")
+            Shell.copyDir (nugetParent </> nugetFileName </> "lib" </> "net5.0") publishPath (fun _ -> true)
+            ZipFile.CreateFromDirectory(nugetParent </> nugetFileName, nupkg)
+            Shell.deleteDir(nugetParent </> nugetFileName)
+        | _ ->
+            ()
 
 let getBuildParam = Environment.environVar
 let isNullOrWhiteSpace = String.IsNullOrWhiteSpace
 
-// Workaround for https://github.com/fsharp/FAKE/issues/2242
-let pushPackage _ =
-     let nugetCmd fileName key = sprintf "nuget push %s -k %s -s nuget.org" fileName key
-     let key =
-         //Environment.environVarOrFail "nugetKey"
-         match getBuildParam "nugetkey" with
-         | s when not (isNullOrWhiteSpace s) -> s
-         | _ -> UserInput.getUserPassword "NuGet Key: "
-     IO.Directory.GetFiles(buildDir, "*.nupkg", SearchOption.TopDirectoryOnly)
-     |> Seq.map Path.GetFileName
-     |> Seq.iter (fun fileName ->
-         Trace.tracef "fileName %s" fileName
-         let cmd = nugetCmd fileName key
-         runDotNet cmd buildDir)
+let publishToNuget _ =
+    let nugetKey =
+        //Environment.environVarOrFail "nugetKey"
+        match getBuildParam "nugetkey" with
+        | s when not (isNullOrWhiteSpace s) -> s
+        | _ -> UserInput.getUserPassword "NuGet Key: "
+    let nupkg =
+        System.IO.Directory.GetFiles(__SOURCE_DIRECTORY__ </> "dist")
+        |> Seq.head
+        |> IO.Path.GetFullPath
 
+    let exitCode = Shell.Exec("dotnet", sprintf "nuget push %s -s nuget.org -k %s" nupkg nugetKey, "dist")
+    if exitCode <> 0
+    then failwith "Could not publish package"
+
+let packUbik _ =
+    Shell.cleanDir (__SOURCE_DIRECTORY__ </> "dist")
+    let args =
+        [
+            "pack"
+            "--configuration Release"
+            sprintf "--output %s" (__SOURCE_DIRECTORY__ </> "dist")
+        ]
+
+    let exitCode = Shell.Exec("dotnet", String.concat " " args, "src" </> "Ubik")
+    if exitCode <> 0
+    then failwith "dotnet pack failed"
+
+//-----------------------------------------------------------------------------
+// Target Declaration
+//-----------------------------------------------------------------------------
 
 Target.create "Clean" clean
 Target.create "DotnetRestore" dotnetRestore
 Target.create "DotnetBuild" dotnetBuild
-Target.create "Push" (fun _ -> pushPackage [] )
+Target.create "DotnetTest" dotnetTest
+Target.create "GenerateCoverageReport" generateCoverageReport
+Target.create "WatchTests" watchTests
+Target.create "GenerateAssemblyInfo" generateAssemblyInfo
+Target.create "PrepareRelease" dotnetPack
+Target.create "DotnetPack" dotnetPack
+Target.create "PublishToNuGet" publishToNuget
+Target.create "Release" ignore
 
-
- // Build order
-"Clean"
-     ==> "DotnetBuild"
-     ==> "UnitTests"
-     ==> "PrepareRelease"
-     ==> "Pack"
-     ==> "Push"
-
-// let dotnetPack ctx =
-//     Shell.cleanDir (__SOURCE_DIRECTORY__ </> "dist")
-
-//     let args =
-//         [
-//             "pack"
-//             "--configuration Release"
-//             sprintf "/p:PackageVersion=%s" releaseNotes.NugetVersion
-//             sprintf "/p:PackageReleaseNotes=\"%s\"" (String.concat "\n" releaseNotes.Notes)
-//             sprintf "--output %s" (__SOURCE_DIRECTORY__ </> "dist")
-//         ]
-
-//     let exitCode = Shell.Exec("dotnet", String.concat " " args, "src" </> "AzureTackleAnalyzer")
-//     if exitCode <> 0 then
-//         failwith "dotnet pack failed"
-//     else
-//         match Shell.Exec("dotnet", "publish -c Release --framework net5.0", "src" </> "AzureTackleAnalyzer") with
-//         | 0 ->
-//             let nupkg =
-//                 System.IO.Directory.GetFiles(__SOURCE_DIRECTORY__ </> "dist")
-//                 |> Seq.head
-//                 |> IO.Path.GetFullPath
-
-//             let nugetParent = DirectoryInfo(nupkg).Parent.FullName
-//             let nugetFileName = IO.Path.GetFileNameWithoutExtension(nupkg)
-
-//             let publishPath = "src" </> "AzureTackleAnalyzer" </> "bin" </> "Release" </> "net5.0" </> "publish"
-//             ZipFile.ExtractToDirectory(nupkg, nugetParent </> nugetFileName)
-//             let nuspecFile = nugetParent </> nugetFileName </> "AzureTackleAnalyzer.nuspec"
-//             // rewriteNuspec
-//             nuspecFile
-//             |> File.ReadAllLines
-//             |> Array.choose (fun line ->
-//                 if line.Contains """<dependency id=\"AzureTackleAnalyzer.Core\"""
-//                 then None
-//                 else Some line)
-//             |> fun content -> File.WriteAllLines(nuspecFile, content)
-
-//             File.Delete nupkg
-//             Shell.deleteDir (nugetParent </> nugetFileName </> "lib" </> "net5.0")
-//             Shell.copyDir (nugetParent </> nugetFileName </> "lib" </> "net5.0") publishPath (fun _ -> true)
-//             ZipFile.CreateFromDirectory(nugetParent </> nugetFileName, nupkg)
-//             Shell.deleteDir(nugetParent </> nugetFileName)
-//         | _ ->
-//             ()
-
-// let getBuildParam = Environment.environVar
-// let isNullOrWhiteSpace = String.IsNullOrWhiteSpace
-
-// let publishToNuget _ =
-//     let nugetKey =
-//         //Environment.environVarOrFail "nugetKey"
-//         match getBuildParam "nugetkey" with
-//         | s when not (isNullOrWhiteSpace s) -> s
-//         | _ -> UserInput.getUserPassword "NuGet Key: "
-//     let nupkg =
-//         System.IO.Directory.GetFiles(__SOURCE_DIRECTORY__ </> "dist")
-//         |> Seq.head
-//         |> IO.Path.GetFullPath
-
-//     let exitCode = Shell.Exec("dotnet", sprintf "nuget push %s -s nuget.org -k %s" nupkg nugetKey, "dist")
-//     if exitCode <> 0
-//     then failwith "Could not publish package"
-
-// let packUbik _ =
-//     Shell.cleanDir (__SOURCE_DIRECTORY__ </> "dist")
-//     let args =
-//         [
-//             "pack"
-//             "--configuration Release"
-//             sprintf "--output %s" (__SOURCE_DIRECTORY__ </> "dist")
-//         ]
-
-//     let exitCode = Shell.Exec("dotnet", String.concat " " args, "src" </> "Ubik")
-//     if exitCode <> 0
-//     then failwith "dotnet pack failed"
-
-// //-----------------------------------------------------------------------------
-// // Target Declaration
-// //-----------------------------------------------------------------------------
-
-// Target.create "Clean" clean
-// Target.create "DotnetRestore" dotnetRestore
-// Target.create "DotnetBuild" dotnetBuild
-// Target.create "DotnetTest" dotnetTest
-// Target.create "GenerateCoverageReport" generateCoverageReport
-// Target.create "WatchTests" watchTests
-// Target.create "GenerateAssemblyInfo" generateAssemblyInfo
-// Target.create "DotnetPack" dotnetPack
-// Target.create "PublishToNuGet" publishToNuget
-// Target.create "Release" ignore
-
-// Target.create "PackNoTests" dotnetPack
-//-----------------------------------------------------------------------------
+Target.create "PackNoTests" dotnetPack
+// -----------------------------------------------------------------------------
 // Target Dependencies
-//-----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
-// Ensure Clean is called before DotnetRestore
-// "Clean" ==> "DotnetRestore"
-// "Clean" ==> "DotnetPack"
+//Ensure Clean is called before DotnetRestore
+"Clean" ==> "DotnetRestore"
+"Clean" ==> "DotnetPack"
 
-// Only call AssemblyInfo if Publish was in the call chain
-// Ensure AssemblyInfo is called after DotnetRestore and before DotnetBuild
-// "DotnetRestore" ?=> "GenerateAssemblyInfo"
-// "GenerateAssemblyInfo" ?=> "DotnetBuild"
-// "GenerateAssemblyInfo" ==> "PublishToNuGet"
+//Only call AssemblyInfo if Publish was in the call chain
+//Ensure AssemblyInfo is called after DotnetRestore and before DotnetBuild
+"DotnetRestore" ?=> "GenerateAssemblyInfo"
+"GenerateAssemblyInfo" ?=> "DotnetBuild"
+"GenerateAssemblyInfo" ==> "PublishToNuGet"
 
-// "DotnetBuild"
-//     ==> "DotnetTest"
-//     ==> "DotnetPack"
-//     ==> "PublishToNuGet"
-//     ==> "Release"
+"DotnetBuild"
+    ==> "DotnetTest"
+    ==> "DotnetPack"
+    ==> "PublishToNuGet"
+    ==> "Release"
 
-// "DotnetRestore"
-//     ==> "WatchTests"
+"DotnetRestore"
+    ==> "WatchTests"
 
 //-----------------------------------------------------------------------------
 // Target Start
