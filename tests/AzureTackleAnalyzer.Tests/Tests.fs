@@ -15,7 +15,7 @@ let project = IO.Path.Combine(__SOURCE_DIRECTORY__, "../examples/hashing/Example
 
 let raiseWhenFailed = function
     | Ok _ -> ()
-    | Error error -> raise error
+    | Result.Error error -> raise error
 
 let inline context file =
     AnalyzerBootstrap.context file

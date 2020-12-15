@@ -604,3 +604,5 @@ module AzureAnalysis =
                         // yield! analyzeColumnReadingAttempts readingAttempts outputColunms
                     ]
         }
+        |> Async.AwaitTask
+        |> Async.RunSynchronously
