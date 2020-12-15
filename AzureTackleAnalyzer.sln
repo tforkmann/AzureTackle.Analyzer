@@ -35,14 +35,6 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "AzureTackleAnalyzer.Core", 
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "AzureTackleParser", "src\AzureTackleParser\AzureTackleParser.fsproj", "{BC524F8E-6282-4E31-9A0E-29FCE38832E7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FParsecCS", "src\FParsecCS\FParsecCS.csproj", "{C5EB813F-4278-4EE7-925B-6757BAD0FE9B}"
-EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FParsec", "src\FParsec\FParsec.fsproj", "{9C8E7641-9DC8-470C-8009-71A747C01DC5}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParserTestsWithNet48", "src\ParserTestsWithNet48\ParserTestsWithNet48.csproj", "{40067E09-6281-4DC2-905D-60F7C6E3B812}"
-EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Ubik", "src\Ubik\Ubik.fsproj", "{0CCC7E3F-78F0-4A4F-8AC1-27A1F6386B1E}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
