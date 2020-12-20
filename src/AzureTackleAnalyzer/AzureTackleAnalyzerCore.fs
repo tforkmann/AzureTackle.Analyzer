@@ -4,7 +4,8 @@ open System
 open System.IO
 open System.Linq
 open FSharp.Compiler.SourceCodeServices
-
+open Microsoft.Extensions.Configuration
+open System.IO
 module AzureTableAnalyzer =
 
     /// Recursively tries to find the parent of a file starting from a directory
@@ -31,11 +32,10 @@ module AzureTableAnalyzer =
             with error -> None
         with error ->
             None
-
-    let tryFindConnectionString fileName =
-        match tryFindConfig fileName with
-        | Some config ->
-            try (File.ReadAllText config)
-            with error -> Environment.GetEnvironmentVariable "AZURE_TACKLE"
-        | None ->
-            Environment.GetEnvironmentVariable "AZURE_TACKLE"
+    let config =
+        ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("AZURE_TACKLE.json")
+            .Build()
+    let connectionString =
+        config.["StorageConnectionString"]

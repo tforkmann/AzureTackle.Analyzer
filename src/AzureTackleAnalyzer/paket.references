@@ -2,3 +2,11 @@ group AzureTackleAnalyzer
   Microsoft.SourceLink.GitHub
   Microsoft.NETFramework.ReferenceAssemblies
   FSharp.Analyzers.SDK
+  F23.StringSimilarity
+  FSharp.Compiler.Service
+  TaskBuilder.fs
+  WindowsAzure.Storage
+  FSharp.Core
+  AzureTackle
+  Microsoft.Extensions.Configuration
+  Microsoft.Extensions.Configuration.Json

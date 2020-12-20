@@ -5,8 +5,6 @@ open FSharp.Compiler.SyntaxTree
 open FSharp.Compiler.Range
 
 module SyntacticAnalysis =
-
-
     let (|FuncName|_|) = function
         | SynExpr.Ident ident -> Some (ident.idText)
         | SynExpr.LongIdent(isOptional, longDotId, altName, range) ->
@@ -317,30 +315,24 @@ module SyntacticAnalysis =
         | _ ->
            None
 
-    /// Detects `Sql.query {SQL}` pattern
-    let (|SqlQuery|_|) = function
-        | Apply("AzureTable.query", SynExpr.Const(SynConst.String(query, queryRange), constRange), range, appRange) ->
-            Some (query, constRange)
+    /// Detects `AzureTable.table {tableName}` pattern
+    let (|AzureTable|_|) = function
+        | Apply("AzureTable.table", SynExpr.Const(SynConst.String(table, tableRange), constRange), range, appRange) ->
+            Some (table, constRange)
         | _ ->
             None
 
     let (|LiteralQuery|_|) = function
-        | Apply("AzureTable.query", SynExpr.Ident(identifier), funcRange, appRange) ->
+        | Apply("AzureTable.table", SynExpr.Ident(identifier), funcRange, appRange) ->
             Some (identifier.idText, funcRange)
         | _ ->
             None
 
-    let (|SqlStoredProcedure|_|) = function
-        | Apply("AzureTable.func", SynExpr.Const(SynConst.String(funcName, funcNameRange), constRange), funcRange, appRange) ->
-            Some (funcName, constRange)
-        | _ ->
-            None
-
-    let rec findQuery = function
-        | SqlQuery (query, range) ->
-            [ AzureAnalyzerBlock.TableQuery(query, range) ]
+    let rec findTable = function
+        | AzureTable (table, range) ->
+            [ AzureAnalyzerBlock.Table(table, range) ]
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
-            [ yield! findQuery funcExpr; yield! findQuery argExpr ]
+            [ yield! findTable funcExpr; yield! findTable argExpr ]
         | _ ->
             [ ]
 
@@ -382,8 +374,8 @@ module SyntacticAnalysis =
             [ yield! findReadColumnAttempts funcExpr; yield! findReadColumnAttempts argExpr ]
         | SynExpr.Paren(expr, leftRange, rightRange, range) ->
             [ yield! findReadColumnAttempts expr ]
-        // | SynExpr.Lambda(fromMethod, inLambdaSeq, args, body, range) ->
-        //     [ yield! findReadColumnAttempts body ]
+        | SynExpr.Lambda(fromMethod, inLambdaSeq, args, body,_, range) ->
+            [ yield! findReadColumnAttempts body ]
         | SynExpr.LetOrUse(isRecursive, isUse, bindings, body, range) ->
              [ yield! findReadColumnAttempts body
                for binding in bindings do
@@ -440,10 +432,10 @@ module SyntacticAnalysis =
                 | None -> ()
             ]
 
-        // | SynExpr.Lambda(_, _, args, body, range) ->
-        //     [
-        //         yield! findReadColumnAttempts body
-        //     ]
+        | SynExpr.Lambda (fromMethod,inSeq,args,body,parsedData,range) ->
+            [
+                yield! findReadColumnAttempts body
+            ]
 
         | SynExpr.Lazy(body, range) ->
             [
@@ -497,10 +489,11 @@ module SyntacticAnalysis =
             match argExpr with
             | SynExpr.CompExpr(isArrayOrList, _, innerExpr, range) ->
                 visitSyntacticExpression innerExpr range
-            | Apply(("AzureTable.executeReader"|"AzureTable.executeReaderAsync"), lambdaExpr, _, appRange) ->
+
+            | Apply(("AzureTable.execute"|"AzureTable.executeDirect"), lambdaExpr, funcRange, appRange) ->
                 let columns = findReadColumnAttempts lambdaExpr
                 let blocks = [
-                    yield! findQuery funcExpr
+                    yield! findTable funcExpr
                     yield! findFilters funcExpr
                     yield! findFunc funcExpr
                     yield AzureAnalyzerBlock.ReadingColumns columns
@@ -508,21 +501,10 @@ module SyntacticAnalysis =
 
                 [ { blocks = blocks; range = range; } ]
 
-            | Apply(("AzureTable.execute"|"AzureTable.executeAsync"|"AzureTable.executeRow"|"AzureTable.executeRowAsync"|"AzureTable.iter"|"AzureTable.iterAsync"), lambdaExpr, funcRange, appRange) ->
-                let columns = findReadColumnAttempts lambdaExpr
-                let blocks = [
-                    yield! findQuery funcExpr
-                    yield! findFilters funcExpr
-                    yield! findFunc funcExpr
-                    yield AzureAnalyzerBlock.ReadingColumns columns
-                ]
-
-                [ { blocks = blocks; range = range; } ]
-
-            | SqlQuery(query, queryRange) ->
+            | AzureTable(table, tableRange) ->
 
                 let blocks = [
-                    AzureAnalyzerBlock.TableQuery(query, queryRange)
+                    AzureAnalyzerBlock.Table(table, tableRange)
                 ]
 
                 [ { blocks = blocks; range = range; } ]
@@ -533,7 +515,7 @@ module SyntacticAnalysis =
                     |> List.map (fun (name, range, func, funcRange, appRange) -> { name = name.Trim().TrimStart('@'); range = range; paramFunc = func; paramFuncRange = funcRange; applicationRange = appRange })
 
                 let blocks = [
-                    yield! findQuery funcExpr
+                    yield! findTable funcExpr
                     yield AzureAnalyzerBlock.Filters(azureFilters, range)
                 ]
 
@@ -542,7 +524,7 @@ module SyntacticAnalysis =
             | FuncName(functionWithoutParameters) ->
                 let blocks = [
                     yield! findFunc funcExpr
-                    yield! findQuery funcExpr
+                    yield! findTable funcExpr
                     yield! findFilters funcExpr
                 ]
 
@@ -551,7 +533,7 @@ module SyntacticAnalysis =
             | Apply(anyOtherFunction, functionArg, range, appRange) ->
                 let blocks = [
                     yield! findFunc funcExpr
-                    yield! findQuery funcExpr
+                    yield! findTable funcExpr
                     yield! findFilters funcExpr
                     yield AzureAnalyzerBlock.ReadingColumns (findReadColumnAttempts funcExpr)
                 ]
@@ -585,8 +567,8 @@ module SyntacticAnalysis =
                 | Some expr -> yield! visitSyntacticExpression expr range
             ]
 
-        // | SynExpr.Lambda (fromMethod, inSeq, args, body, range) ->
-        //     visitSyntacticExpression body range
+        | SynExpr.Lambda (fromMethod,inSeq,args,body,parsedData,range) ->
+            visitSyntacticExpression body range
 
         | SynExpr.Sequential (debugSeqPoint, isTrueSeq, expr1, expr2, range) ->
             [

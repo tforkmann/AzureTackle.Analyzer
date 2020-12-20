@@ -5,20 +5,23 @@ open Expecto
 open AzureTackle.Analyzers
 open AzureTackle.Analyzers.Core
 open AzureTackle
+open FSharp.Analyzers.SDK
 
-let analyzers = [
-    AzureTableAnalyzer.tableAnalyzer
-]
+let analyzers = [ AzureTableAnalyzer.tableAnalyzer ]
 
-let inline find file = IO.Path.Combine(__SOURCE_DIRECTORY__ , file)
-let project = IO.Path.Combine(__SOURCE_DIRECTORY__, "../examples/hashing/Examples.fsproj")
+let inline find file =
+    IO.Path.Combine(__SOURCE_DIRECTORY__, file)
 
-let raiseWhenFailed = function
+let project =
+    IO.Path.Combine(__SOURCE_DIRECTORY__, "../examples/hashing/examples.fsproj")
+
+let raiseWhenFailed =
+    function
     | Ok _ -> ()
     | Result.Error error -> raise error
 
 let inline context file =
-    AnalyzerBootstrap.context file
+    AnalyzerBootstrap.context file []
     |> Option.map AzureTableAnalyzer.azureTableAnalyzerContext
 
 let connectionString =
@@ -36,29 +39,22 @@ type TestData =
       Text: string }
 
 [<Tests>]
-let tests =
-    testList "AzureTable" [
+let tests toolsPath =
+    testList
+        "AzureTable"
+        [
 
+          testTask "Syntactic Analysis: AzureTable blocks can be detected with their relavant information" {
+            //   match context (find "../examples/hashing/syntacticAnalysis.fs") with
+              match context (find "../examples/hashing/test.fsx") with
+              | None ->
+                  printfn "Could not crack project"
+                  failwith "Could not crack project"
+              | Some context ->
+                  printfn "Context"
 
-        testTask "Azure query" {
+                  let operationBlocks =
+                      SyntacticAnalysis.findAzureOperations context
 
-            let! values =
-                  AzureTable.connect connectionString
-                  |> AzureTable.table TestTable
-                  |> AzureTable.executeDirect (fun read ->
-                      { PartKey = read.partKey
-                        RowKey = read.rowKey
-                        Date = read.dateTimeOffset "Date"
-                        Exists = read.bool "Exists"
-                        Value = read.float "Value"
-                        Text = read.string "Text" })
-
-
-            let! databaseMetadata = InformationSchema.getAzureTableEntity (connectionString,TestTable)
-
-            let! tableInfo = InformationSchema.extractTableInfo(connectionString,TestTable)
-            Expect.equal 4 (tableInfo |> Array.length) "There are 4 columns in users table"
-        }
-
-
-    ]
+                  Expect.equal 11 (List.length operationBlocks) "Found 11 operation blocks"
+          } ]

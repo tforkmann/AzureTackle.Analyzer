@@ -4,3 +4,9 @@ group AzureTackleAnalyzer
   FSharp.Core
   Expecto
   AzureTackle
+  FSharp.Analyzers.SDK
+  Ionide.ProjInfo.ProjectSystem
+  Glob
+  Argu
+  Microsoft.Build copy_local: false
+  Microsoft.Build.Locator copy_local: false

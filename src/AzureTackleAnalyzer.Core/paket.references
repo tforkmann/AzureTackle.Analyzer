@@ -1,7 +1,0 @@
-group AzureTackleAnalyzer
-  F23.StringSimilarity
-  FSharp.Compiler.Service
-  TaskBuilder.fs
-  WindowsAzure.Storage
-  FSharp.Core
-  AzureTackle

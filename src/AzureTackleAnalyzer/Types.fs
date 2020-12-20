@@ -60,7 +60,7 @@ type TransactionQuery = {
 }
 [<RequireQualifiedAccess>]
 type AzureAnalyzerBlock =
-    | TableQuery of string * range
+    | Table of string * range
     | ReadingColumns of ColumnReadAttempt list
     | Filters of UsedFilter list *  range
 

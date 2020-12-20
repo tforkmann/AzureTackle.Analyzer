@@ -3,7 +3,7 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net5.0</TargetFramework>
-        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="Analyzer.fs" />
@@ -12,8 +12,8 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\src\AzureTackleAnalyzer\AzureTackleAnalyzer.fsproj" />
-        <ProjectReference Include="..\..\src\AzureTackleAnalyzer.Core\AzureTackleAnalyzer.Core.fsproj" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />
 
 </Project>
+  

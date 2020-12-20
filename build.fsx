@@ -225,7 +225,6 @@ let build dir =
     then failwithf "FAILED %s> dotnet build -c Release" dir
 
 let dotnetBuild _ =
-    build (__SOURCE_DIRECTORY__ </> "src" </> "AzureTackleAnalyzer.Core")
     build (__SOURCE_DIRECTORY__ </> "src" </> "AzureTackleAnalyzer")
     build (__SOURCE_DIRECTORY__ </> "tests" </> "AzureTackleAnalyzer.Tests")
 
@@ -398,19 +397,6 @@ let publishToNuget _ =
     if exitCode <> 0
     then failwith "Could not publish package"
 
-let packUbik _ =
-    Shell.cleanDir (__SOURCE_DIRECTORY__ </> "dist")
-    let args =
-        [
-            "pack"
-            "--configuration Release"
-            sprintf "--output %s" (__SOURCE_DIRECTORY__ </> "dist")
-        ]
-
-    let exitCode = Shell.Exec("dotnet", String.concat " " args, "src" </> "Ubik")
-    if exitCode <> 0
-    then failwith "dotnet pack failed"
-
 //-----------------------------------------------------------------------------
 // Target Declaration
 //-----------------------------------------------------------------------------
@@ -422,7 +408,6 @@ Target.create "DotnetTest" dotnetTest
 Target.create "GenerateCoverageReport" generateCoverageReport
 Target.create "WatchTests" watchTests
 Target.create "GenerateAssemblyInfo" generateAssemblyInfo
-Target.create "PrepareRelease" dotnetPack
 Target.create "DotnetPack" dotnetPack
 Target.create "PublishToNuGet" publishToNuget
 Target.create "Release" ignore
@@ -455,4 +440,4 @@ Target.create "PackNoTests" dotnetPack
 // Target Start
 //-----------------------------------------------------------------------------
 
-Target.runOrDefault "Build"
+Target.runOrDefaultWithArguments "DotnetPack"

@@ -2,8 +2,16 @@ module ExpectoTemplate
 
 open Expecto
 open Expecto.Logging
-
-let config = { defaultConfig with verbosity = LogLevel.Verbose }
+open Ionide.ProjInfo
+open Expecto.Impl
 
 [<EntryPoint>]
-let main argv = Tests.runTestsInAssembly config argv
+let main argv =
+    let toolsPath = Init.init ()
+    printfn "toolsPath %A" toolsPath
+
+    Tests.runTests
+        { defaultConfig with
+              printer = TestPrinters.summaryPrinter defaultConfig.printer
+              verbosity = Verbose }
+        (Tests.tests toolsPath)
