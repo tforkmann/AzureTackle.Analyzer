@@ -20,9 +20,6 @@ let raiseWhenFailed =
     | Ok _ -> ()
     | Result.Error error -> raise error
 
-let inline context file =
-    AnalyzerBootstrap.context file []
-    |> Option.map AzureTableAnalyzer.azureTableAnalyzerContext
 
 let connectionString =
     "DefaultEndpointsProtocol=https;AccountName=dptestchiadev;AccountKey=Vd64M6dPKvW/yRQ32xvptAJWV0GGlaeZJxkArJ8ZGJEKWx/aZH5KAxMMPHJkeL/gMiJb65krq8S5yRxCK67p8w==;BlobEndpoint=https://dptestchiadev.blob.core.windows.net/;QueueEndpoint=https://dptestchiadev.queue.core.windows.net/;TableEndpoint=https://dptestchiadev.table.core.windows.net/;FileEndpoint=https://dptestchiadev.file.core.windows.net/;"
@@ -40,21 +37,44 @@ type TestData =
 
 [<Tests>]
 let tests toolsPath =
+    let opts = AnalyzerBootstrap.getOpts (find project) toolsPath
+    let inline context file =
+        AnalyzerBootstrap.context opts file  []
+        |> Option.map AzureTableAnalyzer.azureTableAnalyzerContext
+
     testList
         "AzureTable"
         [
 
           testTask "Syntactic Analysis: AzureTable blocks can be detected with their relavant information" {
-            //   match context (find "../examples/hashing/syntacticAnalysis.fs") with
-              match context (find "../examples/hashing/test.fsx") with
+              match context (find "../examples/hashing/syntacticAnalysis.fs") with
               | None ->
-                  printfn "Could not crack project"
                   failwith "Could not crack project"
               | Some context ->
-                  printfn "Context"
-
                   let operationBlocks =
                       SyntacticAnalysis.findAzureOperations context
 
-                  Expect.equal 11 (List.length operationBlocks) "Found 11 operation blocks"
+                  Expect.equal 2 (List.length operationBlocks) "Found 11 operation blocks"
+          }
+          testTask "Syntactic Analysis: Azure filters can be analyzed" {
+              match context (find "../examples/hashing/readingAzureTable.fs") with
+              | None ->
+                  failwith "Could not crack project"
+              | Some context ->
+                  match SyntacticAnalysis.findAzureOperations context with
+                  | [operation] ->
+                    printfn "Operation %A" operation
+                    let filters =
+                        operation.blocks
+                        |> List.tryPick (fun block ->
+                            match block with
+                            | AzureAnalyzerBlock.Filters (filters,_) -> Some filters
+                            | _ -> None)
+                    match filters with
+                    | None -> failwith "Expected filters to be found"
+                    | Some [ ] -> failwith "Expected filters to have one query"
+                    | Some (f) ->
+                        Expect.equal 1 f.Length "There is one parameter set"
+                  | _ ->
+                    failwith "Should not happen"
           } ]

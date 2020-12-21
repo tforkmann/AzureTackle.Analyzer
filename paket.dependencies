@@ -22,7 +22,7 @@ group AzureTackleAnalyzer
   nuget Glob
   nuget Ionide.ProjInfo.ProjectSystem
   nuget Microsoft.Build copy_local: false
-  nuget Microsoft.Build.Locator copy_local: false
+  nuget Microsoft.Build.Locator
 group Docs
     storage: none
     source https://www.nuget.org/api/v2

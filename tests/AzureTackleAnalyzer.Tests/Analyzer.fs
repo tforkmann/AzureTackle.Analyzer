@@ -20,8 +20,8 @@ type Arguments =
 
 let mutable verbose = false
 
-let toolsPath = Init.init ()
 printfn "toolsPath"
+
 let createFCS () =
     let checker =
         FSharpChecker.Create(projectCacheSize = 200, keepAllBackgroundResolutions = true, keepAssemblyContents = true)
@@ -30,9 +30,6 @@ let createFCS () =
     checker
 
 let fcs = createFCS ()
-
-let controller =
-    ProjectSystem.ProjectController(toolsPath)
 
 let parser = ArgumentParser.Create<Arguments>()
 
@@ -62,15 +59,16 @@ let printError text arg =
     printfn text arg
     Console.ForegroundColor <- ConsoleColor.White
 
-let loadProject projPath =
+let loadProject projPath toolsPath =
     async {
         let loader = WorkspaceLoader.Create(toolsPath)
-
         let parsed =
             loader.LoadProjects [ projPath ] |> Seq.toList
-
         let fcsPo =
-            FCS.mapToFSharpProjectOptions parsed.Head parsed
+            match parsed |> List.tryHead with
+            | Some p -> FCS.mapToFSharpProjectOptions p parsed
+            | None -> failwithf "The loaded project from path %s could not parse any file" projPath
+
 
         return fcsPo
     }
@@ -135,14 +133,17 @@ let createContext (file, text: string, p: FSharpParseFileResults, c: FSharpCheck
     | _ -> None
 
 
-let runProject proj (globs: Glob list) =
-    let path =
+let getOpts proj toolsPath =
+    let pathProj =
         Path.Combine(Environment.CurrentDirectory, proj)
         |> Path.GetFullPath
-
-    let opts = loadProject path
-
+    loadProject pathProj toolsPath
+let runProject (opts:FSharpProjectOptions ) selectedFile (globs: Glob list) =
+    let pathFile =
+        Path.Combine(Environment.CurrentDirectory, selectedFile)
+        |> Path.GetFullPath
     opts.SourceFiles
+    |> Array.filter (fun file -> file = pathFile)
     |> Array.filter
         (fun file ->
             match globs |> List.tryFind (fun g -> g.IsMatch file) with
@@ -154,14 +155,6 @@ let runProject proj (globs: Glob list) =
         (fun f ->
             typeCheckFile (f, opts)
             |> Option.map createContext)
-// |> Array.collect (fun ctx ->
-//     match ctx with
-//     | Some c ->
-//         printInfo "Running analyzers for %s" c.FileName
-//         Client.runAnalyzers c
-//     | None -> failwithf "could not get context for file %s" path
-//         )
-//     |> Some
 
 let printMessages failOnWarnings (msgs: Message array) =
     if verbose then printfn ""
@@ -212,9 +205,8 @@ let dumpOpts (opts: FSharpProjectOptions) =
     printfn "FSharpProjectOptions.OtherOptions ->"
     opts.OtherOptions |> Array.iter (printfn "%s")
 
-let context proj globs =
-    let path =
-        Path.Combine(Environment.CurrentDirectory, proj)
-        |> Path.GetFullPath
+let context opts selectedFile globs =
 
-    runProject path globs |> Array.head
+    match runProject opts selectedFile globs |> Array.tryHead with
+    | Some c -> c
+    | None -> failwithf "could find any project"

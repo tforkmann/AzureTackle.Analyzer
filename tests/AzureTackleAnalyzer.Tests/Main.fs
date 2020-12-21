@@ -8,9 +8,7 @@ open Expecto.Impl
 [<EntryPoint>]
 let main argv =
     let toolsPath = Init.init ()
-    printfn "toolsPath %A" toolsPath
-
-    Tests.runTests
+    runTests
         { defaultConfig with
               printer = TestPrinters.summaryPrinter defaultConfig.printer
               verbosity = Verbose }

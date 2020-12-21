@@ -560,6 +560,7 @@ module AzureAnalysis =
                 | Result.Ok tableInfos ->
 
                     let readingAttempts = defaultArg (findColumnReadAttempts operation) [ ]
+                    let readingAttempts = defaultArg (findColumnReadAttempts operation) [ ]
                     return [
                         // createInfo (tableInfos.ToString()) tableRange
 
