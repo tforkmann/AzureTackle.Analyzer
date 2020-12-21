@@ -18,18 +18,6 @@ module InformationSchema =
     type TableList = { Tables: CloudTable list }
     type TableEntity = { Entity: DynamicTableEntity option }
 
-    type Filters =
-        { Name: string
-          Direction: ParameterDirection
-          MaxLength: int
-          Precision: byte
-          Scale: byte
-          Optional: bool
-          EntityProperty: EntityProperty
-          IsNullable: bool }
-
-        member this.Size = this.MaxLength
-
     let getTablesRecursivly (storageAccount: CloudStorageAccount) =
         task {
             let rec getTables token =
@@ -92,6 +80,7 @@ module InformationSchema =
                 columnDict
                 |> Seq.map
                     (fun column ->
+
                         { ColumnName = column.Key
                           Nullable = false //TODO: Find out if nullable
                           EntityProperty = column.Value })

@@ -20,8 +20,6 @@ type Arguments =
 
 let mutable verbose = false
 
-printfn "toolsPath"
-
 let createFCS () =
     let checker =
         FSharpChecker.Create(projectCacheSize = 200, keepAllBackgroundResolutions = true, keepAssemblyContents = true)

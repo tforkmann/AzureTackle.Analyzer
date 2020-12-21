@@ -44,8 +44,8 @@ type ColumnReadAttempt =
 type UsedFilter = {
     name : string
     range : range
-    paramFunc : string
-    paramFuncRange : range
+    filterFunc : string
+    filterFuncRange : range
     applicationRange : range option
 }
 type FilterSet = {

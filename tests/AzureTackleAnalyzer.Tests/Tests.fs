@@ -63,7 +63,7 @@ let tests toolsPath =
               | Some context ->
                   match SyntacticAnalysis.findAzureOperations context with
                   | [operation] ->
-                    printfn "Operation %A" operation
+                    // printfn "Operation %A" operation
                     let filters =
                         operation.blocks
                         |> List.tryPick (fun block ->
