@@ -59,7 +59,9 @@ module SyntacticAnalysis =
                          [ SynExpr.Const (SynConst.String (filterName, paramRange), constRange);
                            Apply (funcName, exprArgs, funcRange, appRange) ],
                          commaRange,
-                         tupleRange) -> Some(filterName, paramRange, funcName, funcRange, Some appRange)
+                         tupleRange) ->
+                          printfn "got tuple"
+                          Some(filterName, paramRange, funcName, funcRange, Some appRange)
         | SynExpr.Tuple (isStruct,
                          [ SynExpr.Const (SynConst.String (filterName, paramRange), constRange); secondItem ],
                          commaRange,
@@ -81,12 +83,21 @@ module SyntacticAnalysis =
         function
         | FilterTuple (name, range, func, funcRange, appRange) -> [ name, range, func, funcRange, appRange ]
         | SynExpr.Sequential (_debugSeqPoint, isTrueSeq, expr1, expr2, seqRange) ->
-            printfn "readFilters"
             [ yield! readfilters expr1
               yield! readfilters expr2 ]
+        | SynExpr.App (flag, isInfix, funcExpr, argExpr, range) ->
+            [ yield! readfilters funcExpr
+              yield! readfilters argExpr ]
+        | SynExpr.Ident (x) -> []
+        | SynExpr.Tuple (isStruc, exprs, commaRang, range) ->
+            exprs
+            |> List.collect (fun expr -> [ yield! readfilters expr ])
+        | SynExpr.Paren (expr, leftParRange, rightParRange, range) -> [ yield! readfilters expr ]
+
         | x ->
-            printfn "is %A" x
+            printfn "unmatched SynExpr %A" x
             []
+
 
     let rec flattenList =
         function
@@ -101,9 +112,9 @@ module SyntacticAnalysis =
             printfn "Apply Filters"
             match listExpr with
             | SynExpr.CompExpr (isArrayOfList, isNotNakedRefCell, compExpr, compRange) ->
-                printfn "is comp"
                 Some(readfilters compExpr, compRange)
-            | _ -> None
+            | _ ->
+                None
         | _ -> None
 
     let readFilterSets filterSetsExpr =
@@ -332,6 +343,7 @@ module SyntacticAnalysis =
                 |> List.map
                     (fun (name, range, func, funcRange, appRange) ->
                         printfn "filters %s" name
+
                         { name = name.Trim().TrimStart('@')
                           range = range
                           filterFunc = func
@@ -479,6 +491,7 @@ module SyntacticAnalysis =
                 [ { blocks = blocks; range = range } ]
 
             | AzureFilters (filters, range) ->
+                printfn "filters %A" filters
                 let azureFilters =
                     filters
                     |> List.map
@@ -512,7 +525,9 @@ module SyntacticAnalysis =
 
                 [ { blocks = blocks; range = range } ]
             | SynExpr.Paren (innerExpr, leftRange, rightRange, range) -> visitSyntacticExpression innerExpr range
-            | _ -> []
+            | x ->
+                printfn "unmatched expression %A" x
+                []
         | SynExpr.LetOrUse (isRecursive, isUse, bindings, body, range) ->
             [ yield! visitSyntacticExpression body range
               for binding in bindings do
@@ -538,7 +553,9 @@ module SyntacticAnalysis =
             [ yield! visitSyntacticExpression expr1 range
               yield! visitSyntacticExpression expr2 range ]
 
-        | otherwise -> []
+        | otherwise ->
+            printfn "unmatched expression %A" otherwise
+            []
 
     and visitBinding (binding: SynBinding): AzureOperation list =
         match binding with
@@ -555,35 +572,12 @@ module SyntacticAnalysis =
                               range,
                               seqPoint) -> visitSyntacticExpression expr range
 
-    let findLiterals (ctx: AzureTableAnalyzerContext) =
-        let values = new ResizeArray<string * string>()
-
-        for symbol in ctx.Symbols
-                      |> Seq.collect (fun s -> s.TryGetMembersFunctionsAndValues) do
-            match symbol.LiteralValue with
-            | Some value when value.GetType() = typeof<string> -> values.Add((symbol.LogicalName, unbox<string> value))
-            | _ -> ()
-
-        Map.ofSeq values
-
-    /// Tries to replace [<Literal>] strings inside the module with the identifiers that were used with Sql.query.
-    let applyLiterals (literals: Map<string, string>) (operation: AzureOperation) =
-        let modifiedBlocks =
-            operation.blocks
-            |> List.choose
-                (function
-                | differentBlock -> Some differentBlock)
-
-        { operation with
-              blocks = modifiedBlocks }
-
     let findAzureOperations (ctx: AzureTableAnalyzerContext) =
         let operations = ResizeArray<AzureOperation>()
-
         match ctx.ParseTree with
         | ParsedInput.ImplFile input ->
             match input with
-            | ParsedImplFileInput.ParsedImplFileInput (fileName, isScript, qualifiedName, _, _, modules, _) ->
+            | ParsedImplFileInput (fileName, isScript, qualifiedName, _, _, modules, _) ->
                 for parsedModule in modules do
                     match parsedModule with
                     | SynModuleOrNamespace (identifier, isRecursive, kind, declarations, _, _, _, _) ->
@@ -634,9 +628,6 @@ module SyntacticAnalysis =
 
         | ParsedInput.SigFile file -> ()
 
-        let moduleLiterals = findLiterals ctx
-
         operations
-        |> Seq.map (applyLiterals moduleLiterals)
         |> Seq.filter (fun operation -> not (List.isEmpty operation.blocks))
         |> Seq.toList

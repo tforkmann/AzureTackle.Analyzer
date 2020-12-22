@@ -63,18 +63,19 @@ let tests toolsPath =
               | Some context ->
                   match SyntacticAnalysis.findAzureOperations context with
                   | [operation] ->
-                    // printfn "Operation %A" operation
+                    printfn "Operation %A" operation
                     let filters =
                         operation.blocks
                         |> List.tryPick (fun block ->
                             match block with
                             | AzureAnalyzerBlock.Filters (filters,_) -> Some filters
                             | _ -> None)
+                    printfn "filters %A" filters
                     match filters with
                     | None -> failwith "Expected filters to be found"
-                    | Some [ ] -> failwith "Expected filters to have one query"
+                    | Some [ ] -> failwith "Expected filters to have at least one filter"
                     | Some (f) ->
-                        Expect.equal 1 f.Length "There is one parameter set"
+                        Expect.equal 1 f.Length "There is one filter set"
                   | _ ->
                     failwith "Should not happen"
           } ]

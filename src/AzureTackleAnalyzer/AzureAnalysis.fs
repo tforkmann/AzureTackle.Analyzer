@@ -36,6 +36,7 @@ module AzureAnalysis =
         }
 
     let createWarning (message: string) (range: range): Message =
+        printfn "Warning %s" message
         { Message = message
           Type = "Azure Analysis"
           Code = "AZUREL0001"
@@ -44,6 +45,7 @@ module AzureAnalysis =
           Fixes = [] }
 
     let createInfo (message: string) (range: range): Message =
+        printfn "Warning %s" message
         { Message = message
           Type = "Azure Analysis"
           Code = "AZURE0001"
@@ -67,7 +69,9 @@ module AzureAnalysis =
         operation.blocks
         |> List.tryFind
             (function
-            | AzureAnalyzerBlock.Filters (filters, range) -> true
+            | AzureAnalyzerBlock.Filters (filters, range) ->
+                printfn "found filters"
+                true
             | _ -> false)
         |> Option.map
             (function
@@ -104,7 +108,7 @@ module AzureAnalysis =
                 [ createWarning "Provided filters are redundant. Azure execute is not parameterized" operation.range ]
             else
 
-                /// None of the required parameters have the name of this provided filter
+                /// None of the required filters have the name of this provided filter
                 let isUnknown (filters: UsedFilter) =
                     requiredFilters
                     |> List.forall (fun requiredFilter -> filters.name <> requiredFilter.ColumnName)
@@ -146,8 +150,8 @@ module AzureAnalysis =
 
                       if isUnknown providedFilter then
 
-                          // parameters that haven't been provided yet
-                          let remainingParameters =
+                          // filters that haven't been provided yet
+                          let remainingFilters =
                               requiredFilters
                               |> List.filter
                                   (fun providedFilter ->
@@ -159,18 +163,18 @@ module AzureAnalysis =
                           let levenshtein = NormalizedLevenshtein()
 
                           let closestAlternative =
-                              remainingParameters
+                              remainingFilters
                               |> List.minBy (fun filter -> levenshtein.Distance(filter.ColumnName, providedFilter.name))
                               |> fun filter -> filter.ColumnName
 
                           let expectedFilters =
-                              remainingParameters
+                              remainingFilters
                               |> List.map (fun p -> sprintf "%s:%A" p.ColumnName p.EntityProperty)
                               |> String.concat ", "
-                              |> sprintf "Required parameters are [%s]."
+                              |> sprintf "Required filters are [%s]."
 
                           let codeFixes =
-                              remainingParameters
+                              remainingFilters
                               |> List.map
                                   (fun p ->
                                       { FromRange = providedFilter.range
@@ -742,9 +746,6 @@ module AzureAnalysis =
                 match queryAnalysis with
                 | Result.Error queryError -> return [ createWarning queryError tableRange ]
                 | Result.Ok tableInfos ->
-
-                    let readingAttempts =
-                        defaultArg (findColumnReadAttempts operation) []
 
                     let readingAttempts =
                         defaultArg (findColumnReadAttempts operation) []
