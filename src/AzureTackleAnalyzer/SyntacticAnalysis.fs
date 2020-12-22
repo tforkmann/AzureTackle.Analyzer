@@ -60,8 +60,8 @@ module SyntacticAnalysis =
                            Apply (funcName, exprArgs, funcRange, appRange) ],
                          commaRange,
                          tupleRange) ->
-                          printfn "got tuple"
-                          Some(filterName, paramRange, funcName, funcRange, Some appRange)
+            printfn "got tuple"
+            Some(filterName, paramRange, funcName, funcRange, Some appRange)
         | SynExpr.Tuple (isStruct,
                          [ SynExpr.Const (SynConst.String (filterName, paramRange), constRange); secondItem ],
                          commaRange,
@@ -109,12 +109,10 @@ module SyntacticAnalysis =
     let (|AzureFilters|_|) =
         function
         | Apply ("AzureTable.filter", SynExpr.ArrayOrListOfSeqExpr (isArray, listExpr, listRange), funcRange, appRange) ->
-            printfn "Apply Filters"
             match listExpr with
             | SynExpr.CompExpr (isArrayOfList, isNotNakedRefCell, compExpr, compRange) ->
                 Some(readfilters compExpr, compRange)
-            | _ ->
-                None
+            | _ -> None
         | _ -> None
 
     let readFilterSets filterSetsExpr =
@@ -314,12 +312,6 @@ module SyntacticAnalysis =
             Some(table, constRange)
         | _ -> None
 
-    let (|LiteralQuery|_|) =
-        function
-        | Apply ("AzureTable.table", SynExpr.Ident (identifier), funcRange, appRange) ->
-            Some(identifier.idText, funcRange)
-        | _ -> None
-
     let rec findTable =
         function
         | AzureTable (table, range) -> [ AzureAnalyzerBlock.Table(table, range) ]
@@ -484,14 +476,17 @@ module SyntacticAnalysis =
                 [ { blocks = blocks; range = range } ]
 
             | AzureTable (table, tableRange) ->
+                printfn "tables %A" table
 
                 let blocks =
-                    [ AzureAnalyzerBlock.Table(table, tableRange) ]
+                    [   yield! findTable funcExpr
+                        AzureAnalyzerBlock.Table(table, tableRange) ]
 
                 [ { blocks = blocks; range = range } ]
 
             | AzureFilters (filters, range) ->
                 printfn "filters %A" filters
+
                 let azureFilters =
                     filters
                     |> List.map
@@ -503,7 +498,7 @@ module SyntacticAnalysis =
                               applicationRange = appRange })
 
                 let blocks =
-                    [ yield! findTable funcExpr
+                    [ yield! findFilters funcExpr
                       yield AzureAnalyzerBlock.Filters(azureFilters, range) ]
 
                 [ { blocks = blocks; range = range } ]
@@ -511,15 +506,12 @@ module SyntacticAnalysis =
             | FuncName (functionWithoutfilters) ->
                 let blocks =
                     [ yield! findFunc funcExpr
-                      yield! findTable funcExpr
                       yield! findFilters funcExpr ]
 
                 [ { blocks = blocks; range = range } ]
-
             | Apply (anyOtherFunction, functionArg, range, appRange) ->
                 let blocks =
                     [ yield! findFunc funcExpr
-                      yield! findTable funcExpr
                       yield! findFilters funcExpr
                       yield AzureAnalyzerBlock.ReadingColumns(findReadColumnAttempts funcExpr) ]
 
@@ -571,7 +563,25 @@ module SyntacticAnalysis =
                               expr,
                               range,
                               seqPoint) -> visitSyntacticExpression expr range
+    let findLiterals (ctx: AzureTableAnalyzerContext) =
+     let values = new ResizeArray<string * string>()
+     for symbol in ctx.Symbols |> Seq.collect (fun s -> s.TryGetMembersFunctionsAndValues) do
+        match symbol.LiteralValue with
+        | Some value when value.GetType() = typeof<string> ->
+            values.Add((symbol.LogicalName, unbox<string> value))
+        | _ -> ()
 
+     Map.ofSeq values
+    /// Tries to replace [<Literal>] strings inside the module with the identifiers that were used with Sql.query.
+    let applyLiterals (literals: Map<string, string>) (operation: AzureOperation) =
+        let modifiedBlocks =
+            operation.blocks
+            |> List.choose
+                (function
+                | differentBlock -> Some differentBlock)
+
+        { operation with
+              blocks = modifiedBlocks }
     let findAzureOperations (ctx: AzureTableAnalyzerContext) =
         let operations = ResizeArray<AzureOperation>()
         match ctx.ParseTree with
@@ -593,7 +603,9 @@ module SyntacticAnalysis =
                                                 operations.AddRange(visitBinding binding)
                                         | SynMemberDefn.NestedType (nestedTypeDef, _, _) ->
                                             iterTypeDefs [ nestedTypeDef ]
-                                        | _ -> ()
+                                        | x ->
+                                            printfn "unmatched member %A" x
+                                            ()
 
                                     match typeRepr with
                                     | SynTypeDefnRepr.ObjectModel (modelKind, members, range) ->
@@ -606,7 +618,9 @@ module SyntacticAnalysis =
                                                     operations.AddRange(visitBinding binding)
                                             | SynMemberDefn.NestedType (nestedTypeDef, _, _) ->
                                                 iterTypeDefs [ nestedTypeDef ]
-                                            | _ -> ()
+                                            | x ->
+                                                printfn "unmatched member %A" x
+                                                ()
                                     | _ -> ()
 
                         let rec iterDeclarations decls =
@@ -622,12 +636,16 @@ module SyntacticAnalysis =
 
                                 | SynModuleDecl.DoExpr (debugInfo, expression, range) ->
                                     operations.AddRange(visitSyntacticExpression expression range)
-                                | _ -> ()
+                                | x ->
+                                    ()
 
                         iterDeclarations declarations
 
         | ParsedInput.SigFile file -> ()
 
+        let moduleLiterals = findLiterals ctx
+
         operations
+        |> Seq.map (applyLiterals moduleLiterals)
         |> Seq.filter (fun operation -> not (List.isEmpty operation.blocks))
         |> Seq.toList

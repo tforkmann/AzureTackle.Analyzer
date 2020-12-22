@@ -4,3 +4,5 @@ group AzureTackleAnalyzer
   FSharp.Core
   Expecto
   AzureTackle
+  Microsoft.Extensions.Configuration
+  Microsoft.Extensions.Configuration.Json

@@ -1,8 +1,7 @@
 module AzureTable
 
 open AzureTackle
-
-let connectionString = "Dummy connection string"
+open Config
 
 let findDatesForOne (rowKey: string) =
     connectionString

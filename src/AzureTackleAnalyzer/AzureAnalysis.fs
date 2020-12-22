@@ -328,6 +328,26 @@ module AzureAnalysis =
 
 
                                   | _ -> () ]
+    let analyzeTable (operation: AzureOperation) (availableTables: InformationSchema.TableList)=
+        printfn "trying to analyze table"
+        match findTable operation with
+        | None ->
+
+            if not (List.isEmpty availableTables.Tables) then
+                let missingTables =
+                    availableTables.Tables
+                    |> List.map (fun f -> sprintf "%s" f.Name)
+                    |> String.concat ", "
+                    |> sprintf "Missing tables [%s]. Please use AzureTable.table to provide them."
+
+                [ createWarning missingTables operation.range ]
+            else
+                []
+
+        | Some (queryTable, queryTableRange) ->
+                [ createInfo (availableTables.ToString()) queryTableRange ]
+
+
 
     let findColumn (name: string) (availableColumns: InformationSchema.TableInfo list) =
         availableColumns
@@ -742,17 +762,20 @@ module AzureAnalysis =
             | None -> return []
             | Some (table, tableRange) ->
                 let! queryAnalysis = extractFiltersAndOutputColumns (connectionString, table)
-
-                match queryAnalysis with
-                | Result.Error queryError -> return [ createWarning queryError tableRange ]
-                | Result.Ok tableInfos ->
+                let! tables = databaseSchema (connectionString)
+                printfn "got %A" tables
+                match queryAnalysis,tables with
+                | Result.Error queryError,Result.Error error -> return [ createWarning queryError tableRange ]
+                | Result.Ok tableInfos,Result.Ok tables ->
 
                     let readingAttempts =
                         defaultArg (findColumnReadAttempts operation) []
 
                     return
-                        [ yield! analyzeFilter operation tableInfos
+                        [ yield! analyzeTable operation tables
+                          yield! analyzeFilter operation tableInfos
                           yield! analyzeColumnReadingAttempts readingAttempts tableInfos ]
+                | _ -> return []
         }
         |> Async.AwaitTask
         |> Async.RunSynchronously

@@ -1,7 +1,5 @@
 namespace AzureTackle.Analyzers.Core
 
-open System
-open System.Data
 open System.Collections.Generic
 open Microsoft.WindowsAzure.Storage
 open Microsoft.WindowsAzure.Storage.Table

@@ -47,14 +47,35 @@ let tests toolsPath =
         "AzureTable"
         [
 
-          testTask "Syntactic Analysis: AzureTable blocks can be detected with their relavant information" {
-              match context (find "../examples/hashing/syntacticAnalysis.fs") with
+        //   testTask "Syntactic Analysis: AzureTable blocks can be detected with their relavant information" {
+        //       match context (find "../examples/hashing/syntacticAnalysis.fs") with
+        //       | None -> failwith "Could not crack project"
+        //       | Some context ->
+        //           let operationBlocks =
+        //               SyntacticAnalysis.findAzureOperations context
+
+        //           Expect.equal 2 (List.length operationBlocks) "Found 11 operation blocks"
+        //   }
+          testTask "Syntactic Analysis: Azure tables can be analyzed" {
+              match context (find "../examples/hashing/readingAzureTable.fs") with
               | None -> failwith "Could not crack project"
               | Some context ->
-                  let operationBlocks =
-                      SyntacticAnalysis.findAzureOperations context
-
-                  Expect.equal 2 (List.length operationBlocks) "Found 11 operation blocks"
+                  match SyntacticAnalysis.findAzureOperations context with
+                  | [operation] ->
+                              printfn "Operation %A" operation.blocks
+                              let tables =
+                                  operation.blocks
+                                  |> List.tryPick (fun block ->
+                                      match block with
+                                      | AzureAnalyzerBlock.Table (tables,_) -> Some tables
+                                      | _ -> None)
+                              printfn "tables %A" tables
+                              match tables with
+                              | None -> failwith "Expected tables to be found"
+                            //   | Some [ ] -> failwith "Expected filters to have at least one filter"
+                              | Some (f) ->
+                                  Expect.isNonEmpty f "There is one tables set"
+                  | _ -> failwith "Should not happen"
           }
         //   testTask "Syntactic Analysis: Azure filters can be analyzed" {
         //       match context (find "../examples/hashing/readingAzureTable.fs") with

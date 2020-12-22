@@ -1,9 +1,10 @@
 module ReadingAzureTable
 
 open AzureTackle
-
-let findTestData connection table =
-    AzureTable.connect connection
-    |> AzureTable.table table
+open Config
+let findTestData =
+    connectionString
+    |> AzureTable.connect
+    |> AzureTable.table "TestTable"
     |> AzureTable.filter [ RoKey(Equal, "") ]
     |> AzureTable.executeDirect (fun read -> read.string "roles")
