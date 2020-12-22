@@ -1,7 +1,7 @@
 group AzureTackleAnalyzer
   storage: none
   source https://api.nuget.org/v3/index.json
-  frameworks: net5.0, netstandard2.0
+  frameworks: net5.0
   nuget FSharp.Core == 5.0.0
   nuget Microsoft.SourceLink.GitHub copy_local: true
   nuget Microsoft.NETFramework.ReferenceAssemblies copy_local: true
