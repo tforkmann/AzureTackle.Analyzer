@@ -5,7 +5,6 @@ open Expecto
 open AzureTackle.Analyzers
 open AzureTackle.Analyzers.Core
 open AzureTackle
-open FSharp.Analyzers.SDK
 
 let analyzers = [ AzureTableAnalyzer.tableAnalyzer ]
 
@@ -37,9 +36,11 @@ type TestData =
 
 [<Tests>]
 let tests toolsPath =
-    let opts = AnalyzerBootstrap.getOpts (find project) toolsPath
+    let opts =
+        AnalyzerBootstrap.getOpts (find project) toolsPath
+
     let inline context file =
-        AnalyzerBootstrap.context opts file  []
+        AnalyzerBootstrap.context opts file []
         |> Option.map AzureTableAnalyzer.azureTableAnalyzerContext
 
     testList
@@ -48,8 +49,7 @@ let tests toolsPath =
 
           testTask "Syntactic Analysis: AzureTable blocks can be detected with their relavant information" {
               match context (find "../examples/hashing/syntacticAnalysis.fs") with
-              | None ->
-                  failwith "Could not crack project"
+              | None -> failwith "Could not crack project"
               | Some context ->
                   let operationBlocks =
                       SyntacticAnalysis.findAzureOperations context

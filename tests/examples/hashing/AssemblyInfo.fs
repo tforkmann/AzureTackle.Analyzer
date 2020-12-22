@@ -2,22 +2,22 @@
 namespace System
 open System.Reflection
 
-[<assembly: AssemblyTitleAttribute("Examples")>]
+[<assembly: AssemblyTitleAttribute("examples")>]
 [<assembly: AssemblyProductAttribute("AzureTackleAnalyzer")>]
-[<assembly: AssemblyVersionAttribute("0.3.2")>]
-[<assembly: AssemblyMetadataAttribute("ReleaseDate","2020-12-16T00:00:00.0000000")>]
-[<assembly: AssemblyFileVersionAttribute("0.3.2")>]
-[<assembly: AssemblyInformationalVersionAttribute("0.3.2")>]
+[<assembly: AssemblyVersionAttribute("0.3.3")>]
+[<assembly: AssemblyMetadataAttribute("ReleaseDate","2020-12-22T00:00:00.0000000")>]
+[<assembly: AssemblyFileVersionAttribute("0.3.3")>]
+[<assembly: AssemblyInformationalVersionAttribute("0.3.3")>]
 [<assembly: AssemblyMetadataAttribute("ReleaseChannel","release")>]
-[<assembly: AssemblyMetadataAttribute("GitHash","ba713bee009ec63e1ecbc841fb2c68bbfffdeb0b")>]
+[<assembly: AssemblyMetadataAttribute("GitHash","8ffa1d42d6a070ca4ebc8a97cdf45ace34393adc")>]
 do ()
 
 module internal AssemblyVersionInformation =
-    let [<Literal>] AssemblyTitle = "Examples"
+    let [<Literal>] AssemblyTitle = "examples"
     let [<Literal>] AssemblyProduct = "AzureTackleAnalyzer"
-    let [<Literal>] AssemblyVersion = "0.3.2"
-    let [<Literal>] AssemblyMetadata_ReleaseDate = "2020-12-16T00:00:00.0000000"
-    let [<Literal>] AssemblyFileVersion = "0.3.2"
-    let [<Literal>] AssemblyInformationalVersion = "0.3.2"
+    let [<Literal>] AssemblyVersion = "0.3.3"
+    let [<Literal>] AssemblyMetadata_ReleaseDate = "2020-12-22T00:00:00.0000000"
+    let [<Literal>] AssemblyFileVersion = "0.3.3"
+    let [<Literal>] AssemblyInformationalVersion = "0.3.3"
     let [<Literal>] AssemblyMetadata_ReleaseChannel = "release"
-    let [<Literal>] AssemblyMetadata_GitHash = "ba713bee009ec63e1ecbc841fb2c68bbfffdeb0b"
+    let [<Literal>] AssemblyMetadata_GitHash = "8ffa1d42d6a070ca4ebc8a97cdf45ace34393adc"
