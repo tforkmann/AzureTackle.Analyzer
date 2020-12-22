@@ -56,26 +56,27 @@ let tests toolsPath =
 
                   Expect.equal 2 (List.length operationBlocks) "Found 11 operation blocks"
           }
-          testTask "Syntactic Analysis: Azure filters can be analyzed" {
-              match context (find "../examples/hashing/readingAzureTable.fs") with
-              | None ->
-                  failwith "Could not crack project"
-              | Some context ->
-                  match SyntacticAnalysis.findAzureOperations context with
-                  | [operation] ->
-                    printfn "Operation %A" operation
-                    let filters =
-                        operation.blocks
-                        |> List.tryPick (fun block ->
-                            match block with
-                            | AzureAnalyzerBlock.Filters (filters,_) -> Some filters
-                            | _ -> None)
-                    printfn "filters %A" filters
-                    match filters with
-                    | None -> failwith "Expected filters to be found"
-                    | Some [ ] -> failwith "Expected filters to have at least one filter"
-                    | Some (f) ->
-                        Expect.equal 1 f.Length "There is one filter set"
-                  | _ ->
-                    failwith "Should not happen"
-          } ]
+        //   testTask "Syntactic Analysis: Azure filters can be analyzed" {
+        //       match context (find "../examples/hashing/readingAzureTable.fs") with
+        //       | None ->
+        //           failwith "Could not crack project"
+        //       | Some context ->
+        //           match SyntacticAnalysis.findAzureOperations context with
+        //           | [operation] ->
+        //             printfn "Operation %A" operation
+        //             let filters =
+        //                 operation.blocks
+        //                 |> List.tryPick (fun block ->
+        //                     match block with
+        //                     | AzureAnalyzerBlock.Filters (filters,_) -> Some filters
+        //                     | _ -> None)
+        //             printfn "filters %A" filters
+        //             match filters with
+        //             | None -> failwith "Expected filters to be found"
+        //             | Some [ ] -> failwith "Expected filters to have at least one filter"
+        //             | Some (f) ->
+        //                 Expect.equal 1 f.Length "There is one filter set"
+        //           | _ ->
+        //             failwith "Should not happen"
+        //   }
+          ]
