@@ -1,3 +1,5 @@
+#### 0.3.3 - 2020-12-22
+* apply filter
 #### 0.3.2 - 2020-12-16
 * try to analyse column reading
 #### 0.3.1 - 2020-12-16
