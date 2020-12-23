@@ -213,36 +213,6 @@ module SyntacticAnalysis =
 
         Seq.toList sets
 
-    let (|TransactionQuery|_|) =
-        function
-        | SynExpr.Tuple (isStruct,
-                         [ SynExpr.Const (SynConst.String (query, queryRange), constRange); filterSetsExpr ],
-                         commaRange,
-                         tupleRange) ->
-            let transaction =
-                { query = query
-                  queryRange = queryRange
-                  filterSets = readFilterSets filterSetsExpr }
-
-            Some transaction
-
-        | SynExpr.Tuple (isStruct, [ SynExpr.Ident value; filterSetsExpr ], commaRange, tupleRange) ->
-            let transaction =
-                { query = value.idText
-                  queryRange = value.idRange
-                  filterSets = readFilterSets filterSetsExpr }
-
-            Some transaction
-        | _ -> None
-
-    let rec readTransactionQueries =
-        function
-        | TransactionQuery transactionQuery -> [ transactionQuery ]
-        | SynExpr.Sequential (_debugSeqPoint, isTrueSeq, expr1, expr2, seqRange) ->
-            [ yield! readTransactionQueries expr1
-              yield! readTransactionQueries expr2 ]
-        | _ -> []
-
     let (|ReadColumnAttempt|_|) =
         function
         | Apply (funcName, SynExpr.Const (SynConst.String (columnName, queryRange), constRange), funcRange, appRange) ->
@@ -349,16 +319,6 @@ module SyntacticAnalysis =
               yield! findFilters argExpr ]
 
         | _ -> []
-
-    let rec findExecuteTransaction =
-        function
-
-        | SynExpr.App (exprAtomic, isInfix, funcExpr, argExpr, range) ->
-            [ yield! findExecuteTransaction funcExpr
-              yield! findExecuteTransaction argExpr ]
-
-        | _ -> []
-
 
     let rec findReadColumnAttempts =
         function

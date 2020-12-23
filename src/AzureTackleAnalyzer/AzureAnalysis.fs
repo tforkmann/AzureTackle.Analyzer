@@ -426,7 +426,7 @@ module AzureAnalysis =
                     String.concat
                         String.Empty
                         [ sprintf "Type mismatch: attempting to read column '%s' of " column.ColumnName
-                          sprintf "type '%s' using %s. " (column.EntityProperty.ToString()) attempt.funcName
+                          sprintf "type '%s' using %s. " (column.EntityProperty.PropertyType.ToString()) attempt.funcName
                           sprintf "Please use %s instead" formattedFunctions ]
 
                 let typeMismatch (shouldUse: string list) =
