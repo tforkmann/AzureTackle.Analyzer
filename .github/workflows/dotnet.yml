@@ -21,8 +21,8 @@ jobs:
       run: dotnet tool restore
     - name: Build
       run: dotnet fake build
-    - name: Test
-      run: dotnet fake build -t test
+    # - name: Test
+    #   run: dotnet fake build -t test
     - name: Build
       if: runner.os == 'Windows'
       run: ./build.cmd
