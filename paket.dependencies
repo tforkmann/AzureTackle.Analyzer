@@ -16,8 +16,7 @@ group AzureTackleAnalyzer
   nuget WindowsAzure.Storage
   nuget Microsoft.Extensions.Configuration
   nuget Microsoft.Extensions.Configuration.Json
-  nuget FSharp.Core
-  nuget FSharp.Compiler.Service
+  nuget FSharp.Compiler.Service 38.0.0
   nuget Argu
   nuget Glob
   nuget Ionide.ProjInfo.ProjectSystem
