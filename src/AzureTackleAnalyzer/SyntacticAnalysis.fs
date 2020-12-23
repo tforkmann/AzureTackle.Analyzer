@@ -89,6 +89,7 @@ module SyntacticAnalysis =
             [ yield! readfilters funcExpr
               yield! readfilters argExpr ]
         | SynExpr.Ident (x) -> []
+        | SynExpr.Const (c, r) -> []
         | SynExpr.Tuple (isStruc, exprs, commaRang, range) ->
             exprs
             |> List.collect (fun expr -> [ yield! readfilters expr ])
@@ -439,8 +440,8 @@ module SyntacticAnalysis =
                 printfn "tables %A" table
 
                 let blocks =
-                    [   yield! findTable funcExpr
-                        AzureAnalyzerBlock.Table(table, tableRange) ]
+                    [ yield! findTable funcExpr
+                      AzureAnalyzerBlock.Table(table, tableRange) ]
 
                 [ { blocks = blocks; range = range } ]
 
@@ -523,15 +524,17 @@ module SyntacticAnalysis =
                               expr,
                               range,
                               seqPoint) -> visitSyntacticExpression expr range
-    let findLiterals (ctx: AzureTableAnalyzerContext) =
-     let values = new ResizeArray<string * string>()
-     for symbol in ctx.Symbols |> Seq.collect (fun s -> s.TryGetMembersFunctionsAndValues) do
-        match symbol.LiteralValue with
-        | Some value when value.GetType() = typeof<string> ->
-            values.Add((symbol.LogicalName, unbox<string> value))
-        | _ -> ()
 
-     Map.ofSeq values
+    let findLiterals (ctx: AzureTableAnalyzerContext) =
+        let values = new ResizeArray<string * string>()
+
+        for symbol in ctx.Symbols
+                      |> Seq.collect (fun s -> s.TryGetMembersFunctionsAndValues) do
+            match symbol.LiteralValue with
+            | Some value when value.GetType() = typeof<string> -> values.Add((symbol.LogicalName, unbox<string> value))
+            | _ -> ()
+
+        Map.ofSeq values
     /// Tries to replace [<Literal>] strings inside the module with the identifiers that were used with Sql.query.
     let applyLiterals (literals: Map<string, string>) (operation: AzureOperation) =
         let modifiedBlocks =
@@ -542,8 +545,10 @@ module SyntacticAnalysis =
 
         { operation with
               blocks = modifiedBlocks }
+
     let findAzureOperations (ctx: AzureTableAnalyzerContext) =
         let operations = ResizeArray<AzureOperation>()
+
         match ctx.ParseTree with
         | ParsedInput.ImplFile input ->
             match input with
@@ -596,8 +601,7 @@ module SyntacticAnalysis =
 
                                 | SynModuleDecl.DoExpr (debugInfo, expression, range) ->
                                     operations.AddRange(visitSyntacticExpression expression range)
-                                | x ->
-                                    ()
+                                | x -> ()
 
                         iterDeclarations declarations
 
