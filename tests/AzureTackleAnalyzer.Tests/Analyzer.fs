@@ -66,8 +66,6 @@ let loadProject projPath toolsPath =
             match parsed |> List.tryHead with
             | Some p -> FCS.mapToFSharpProjectOptions p parsed
             | None -> failwithf "The loaded project from path %s could not parse any file" projPath
-
-
         return fcsPo
     }
     |> Async.RunSynchronously

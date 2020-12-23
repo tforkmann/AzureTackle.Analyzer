@@ -428,7 +428,7 @@ Target.create "PackNoTests" dotnetPack
 "GenerateAssemblyInfo" ==> "PublishToNuGet"
 
 "DotnetBuild"
-    ==> "DotnetTest"
+    // ==> "DotnetTest"
     ==> "DotnetPack"
     ==> "PublishToNuGet"
     ==> "Release"

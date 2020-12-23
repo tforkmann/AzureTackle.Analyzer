@@ -3,11 +3,11 @@ module AzureTable
 open AzureTackle
 open Config
 
-let findDatesForOne (rowKey: string) =
+let findDatesForOne =
     connectionString
     |> AzureTable.connect
     |> AzureTable.table "TestTable"
-    |> AzureTable.filter [ RoKey(Equal, rowKey) ]
+    |> AzureTable.filter [ RoKey(Equal, "rowKey") ]
     |> AzureTable.executeDirect (fun read -> read.dateTimeOffset "Date")
 
 let findRowKeyInTestData =
