@@ -60,22 +60,14 @@ module SyntacticAnalysis =
                            Apply (funcName, exprArgs, funcRange, appRange) ],
                          commaRange,
                          tupleRange) ->
-            printfn "got tuple"
-            Some(filterName, paramRange, funcName, funcRange, Some appRange)
+
+                         Some(filterName, paramRange, funcName, funcRange, Some appRange)
         | SynExpr.Tuple (isStruct,
-                         [ SynExpr.Const (SynConst.String (filterName, paramRange), constRange); secondItem ],
+                         [ SynExpr.Ident ident; SynExpr.Const (SynConst.String (filterName, paramRange), constRange) ],
                          commaRange,
                          tupleRange) ->
-            match secondItem with
-            | SynExpr.LongIdent (isOptional, longDotId, altName, identRange) ->
-                match longDotId with
-                | LongIdentWithDots (listOfIds, ranges) ->
-                    let fullName =
-                        listOfIds
-                        |> List.map (fun id -> id.idText)
-                        |> String.concat "."
-
-                    Some(filterName, paramRange, fullName, identRange, None)
+                         printfn "found"
+                         Some(filterName, paramRange, ident.ToString(), constRange, Some constRange)
             | _ -> None
         | _ -> None
 
@@ -88,11 +80,12 @@ module SyntacticAnalysis =
         | SynExpr.App (flag, isInfix, funcExpr, argExpr, range) ->
             [ yield! readfilters funcExpr
               yield! readfilters argExpr ]
-        | SynExpr.Ident (x) -> []
-        | SynExpr.Const (c, r) -> []
-        | SynExpr.Tuple (isStruc, exprs, commaRang, range) ->
-            exprs
-            |> List.collect (fun expr -> [ yield! readfilters expr ])
+        // | SynExpr.Ident (x) -> []
+        // | SynExpr.Const (c, r) -> []
+        // | SynExpr.Tuple (isStruc, exprs, commaRang, range) ->
+        //     exprs
+        //     |> List.collect (fun expr ->
+        //         [ yield! readfilters expr ])
         | SynExpr.Paren (expr, leftParRange, rightParRange, range) -> [ yield! readfilters expr ]
 
         | x ->
@@ -107,6 +100,7 @@ module SyntacticAnalysis =
               yield! flattenList expr2 ]
         | expr -> [ expr ]
 
+    /// Detects `AzureTable.filter {FilterArray}` pattern
     let (|AzureFilters|_|) =
         function
         | Apply ("AzureTable.filter", SynExpr.ArrayOrListOfSeqExpr (isArray, listExpr, listRange), funcRange, appRange) ->
@@ -114,7 +108,8 @@ module SyntacticAnalysis =
             | SynExpr.CompExpr (isArrayOfList, isNotNakedRefCell, compExpr, compRange) ->
                 Some(readfilters compExpr, compRange)
             | _ -> None
-        | _ -> None
+        | _ ->
+            None
 
     let readFilterSets filterSetsExpr =
         let sets = ResizeArray<FilterSet>()
@@ -608,7 +603,6 @@ module SyntacticAnalysis =
         | ParsedInput.SigFile file -> ()
 
         let moduleLiterals = findLiterals ctx
-
         operations
         |> Seq.map (applyLiterals moduleLiterals)
         |> Seq.filter (fun operation -> not (List.isEmpty operation.blocks))

@@ -90,6 +90,7 @@ module AzureAnalysis =
             | _ -> failwith "should not happen")
 
     let analyzeFilter (operation: AzureOperation) (requiredFilters: InformationSchema.TableInfo list) =
+        printfn "analyze filter"
         match findFilters operation with
         | None ->
             if not (List.isEmpty requiredFilters) then
@@ -755,7 +756,6 @@ module AzureAnalysis =
     /// and re-used when analyzing the rest of the Sql operation blocks
     let analyzeOperation (operation: AzureOperation)
                          (connectionString: string)
-                         (tableList: InformationSchema.TableList)
                          =
         task {
             match findTable operation with

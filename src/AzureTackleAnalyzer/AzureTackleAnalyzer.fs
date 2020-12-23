@@ -53,7 +53,7 @@ module AzureTableAnalyzer =
                                 |> specializedMessage ]
                     else
                         let! schema = Core.AzureAnalysis.databaseSchema connectionString
-
+                        printfn "got schema"
                         match schema with
                         | Result.Error connectionError ->
                             return
@@ -69,15 +69,9 @@ module AzureTableAnalyzer =
 
                         | Result.Ok tableList ->
                             return
-
-                                //    [
-                                //     for block in syntacticBlocks ->
-                                //       Core.AzureAnalysis.createInfo (sprintf "Found following tables %A" tableList.Tables) block.range
-                                //       |> specializedMessage
-                                //    ]
                                 syntacticBlocks
                                 |> List.collect
-                                    (fun block -> Core.AzureAnalysis.analyzeOperation block connectionString tableList)
+                                    (fun block -> Core.AzureAnalysis.analyzeOperation block connectionString)
                                 |> List.map specializedMessage
                                 |> List.distinctBy (fun message -> message.Range)
 
