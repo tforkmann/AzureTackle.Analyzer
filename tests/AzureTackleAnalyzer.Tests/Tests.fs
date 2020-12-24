@@ -77,27 +77,56 @@ let tests toolsPath =
         //                           Expect.isNonEmpty f "There is one tables set"
         //           | _ -> failwith "Should not happen"
         //   }
-          testTask "Syntactic Analysis: Azure filters can be analyzed" {
-              match context (find "../examples/hashing/readingAzureTable.fs") with
-              | None ->
-                  failwith "Could not crack project"
-              | Some context ->
-                  match SyntacticAnalysis.findAzureOperations context with
-                  | [operation] ->
-                    // printfn "Operation %A" operation
-                    let filters =
-                        operation.blocks
-                        |> List.tryPick (fun block ->
-                            match block with
-                            | AzureAnalyzerBlock.Filters (filters,_) -> Some filters
-                            | _ -> None)
-                    printfn "filters %A" filters
-                    match filters with
-                    | None -> failwith "Expected filters to be found"
-                    | Some [ ] -> failwith "Expected filters to have at least one filter"
-                    | Some (f) ->
-                        Expect.equal 1 f.Length "There is one filter set"
-                  | _ ->
-                    failwith "Should not happen"
-          }
+        //   testTask "Syntactic Analysis: Azure filters can be analyzed" {
+        //       match context (find "../examples/hashing/readingAzureTable.fs") with
+        //       | None ->
+        //           failwith "Could not crack project"
+        //       | Some context ->
+        //           match SyntacticAnalysis.findAzureOperations context with
+        //           | [operation] ->
+        //             let filters =
+        //                 operation.blocks
+        //                 |> List.tryPick (fun block ->
+        //                     match block with
+        //                     | AzureAnalyzerBlock.Filters (filters,_) -> Some filters
+        //                     | _ -> None)
+        //             match filters with
+        //             | None -> failwith "Expected filters to be found"
+        //             | Some [ ] -> failwith "Expected filters to have at least one filter"
+        //             | Some (f) ->
+        //                 Expect.equal 1 f.Length "There is one filter set"
+        //           | _ ->
+        //             failwith "Should not happen"
+        //   }
+        //   testTask "Syntactic Analysis: simple filter can be read" {
+        //     match context (find "../examples/hashing/readingAzureTable.fs") with
+        //     | None -> failwith "Could not crack project"
+        //     | Some context ->
+        //         match SyntacticAnalysis.findAzureOperations context with
+        //         | [ operation ] ->
+        //             match AzureAnalysis.findFilters operation with
+        //             | Some(filter, range) ->
+        //                 printfn "filter %A" filter
+        //                 Expect.equal filter []"Literal string should be read correctly"
+        //             | None -> failwith "Should have found the correct query"
+        //         | _ ->
+        //             failwith "Should not happen"
+        //     }
+          testTask "Semantic Analysis: empty filter sets with missing filters give error" {
+
+                match context (find "../examples/hashing/readingAzureTable.fs") with
+                | None -> failwith "Could not crack project"
+                | Some context ->
+                    match! AzureAnalysis.databaseSchema connectionString with
+                    | Result.Error connectionError ->
+                        failwith connectionError
+                    | Result.Ok schema ->
+                        let block = List.exactlyOne (SyntacticAnalysis.findAzureOperations context)
+                        let messages = AzureAnalysis.analyzeOperation block connectionString
+                        match messages with
+                        | [ message ] ->
+                            Expect.isTrue (message.IsWarning()) "The message is an warning"
+                        | _ ->
+                            failwith "Expected only one error message"
+            }
           ]

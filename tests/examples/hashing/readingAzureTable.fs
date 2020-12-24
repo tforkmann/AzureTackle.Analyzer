@@ -5,6 +5,6 @@ open Config
 let findTestData =
     connectionString
     |> AzureTable.connect
-    |> AzureTable.table "TestTable"
-    |> AzureTable.filter [ RoKey(Equal, "") ]
+    |> AzureTable.table "TestTabl"
+    |> AzureTable.filter [ RoKey(Equal, "RowKey") ]
     |> AzureTable.executeDirect (fun read -> read.string "roles")

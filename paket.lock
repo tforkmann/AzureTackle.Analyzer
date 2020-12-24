@@ -9,11 +9,16 @@ NUGET
       TaskBuilder.fs (>= 2.1) - restriction: >= net50
       WindowsAzure.Storage (>= 9.3.3) - restriction: >= net50
     AzureTackle.Shared (0.2.8) - restriction: >= net50
-    AzureTackleAnalyzer (0.3.3)
+    AzureTackleAnalyzer (0.3.4)
       AzureTackle (>= 0.2.8) - restriction: >= net50
       F23.StringSimilarity (>= 3.1) - restriction: >= net50
       FSharp.Analyzers.SDK (>= 0.6) - restriction: >= net50
+      FSharp.Compiler.Service (>= 38.0) - restriction: >= net50
+      FSharp.Core (>= 5.0) - restriction: >= net50
+      Microsoft.Extensions.Configuration (>= 5.0) - restriction: >= net50
       Microsoft.Extensions.Configuration.Json (>= 5.0) - restriction: >= net50
+      TaskBuilder.fs (>= 2.1) - restriction: >= net50
+      WindowsAzure.Storage (>= 9.3.3) - restriction: >= net50
     F23.StringSimilarity (3.1) - restriction: >= net50
       NETStandard.Library (>= 1.6.1) - restriction: >= netstandard1.0
     FSharp.Analyzers.SDK (0.6) - restriction: >= net50

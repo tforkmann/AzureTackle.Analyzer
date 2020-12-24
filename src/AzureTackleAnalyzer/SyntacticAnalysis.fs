@@ -66,7 +66,6 @@ module SyntacticAnalysis =
                          [ SynExpr.Ident ident; SynExpr.Const (SynConst.String (filterName, paramRange), constRange) ],
                          commaRange,
                          tupleRange) ->
-                         printfn "found"
                          Some(filterName, paramRange, ident.ToString(), constRange, Some constRange)
             | _ -> None
         | _ -> None
@@ -80,12 +79,8 @@ module SyntacticAnalysis =
         | SynExpr.App (flag, isInfix, funcExpr, argExpr, range) ->
             [ yield! readfilters funcExpr
               yield! readfilters argExpr ]
-        // | SynExpr.Ident (x) -> []
-        // | SynExpr.Const (c, r) -> []
-        // | SynExpr.Tuple (isStruc, exprs, commaRang, range) ->
-        //     exprs
-        //     |> List.collect (fun expr ->
-        //         [ yield! readfilters expr ])
+        | SynExpr.Ident (x) -> [ x.idText, x.idRange, "Ident", x.idRange , None ]
+        | SynExpr.Const (c, r) -> [ c.ToString(), r, "Const", r , None ]
         | SynExpr.Paren (expr, leftParRange, rightParRange, range) -> [ yield! readfilters expr ]
 
         | x ->

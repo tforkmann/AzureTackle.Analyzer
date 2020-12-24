@@ -25,10 +25,10 @@ module AzureAnalysis =
               column = columnName
               table = None }
 
-    let extractFiltersAndOutputColumns (connectionString, tableName) =
+    let extractFiltersAndOutputColumns (connectionString, tableName,avaiableTables) =
         task {
             try
-                let! tableInfo = InformationSchema.extractTableInfo (connectionString, tableName)
+                let! tableInfo = InformationSchema.extractTableInfo (connectionString, tableName,avaiableTables)
                 return Result.Ok tableInfo
             with error ->
                 // any other generic error
@@ -37,6 +37,7 @@ module AzureAnalysis =
 
     let createWarning (message: string) (range: range): Message =
         printfn "Warning %s" message
+
         { Message = message
           Type = "Azure Analysis"
           Code = "AZUREL0001"
@@ -45,7 +46,8 @@ module AzureAnalysis =
           Fixes = [] }
 
     let createInfo (message: string) (range: range): Message =
-        printfn "Warning %s" message
+        printfn "Info %s" message
+
         { Message = message
           Type = "Azure Analysis"
           Code = "AZURE0001"
@@ -69,9 +71,7 @@ module AzureAnalysis =
         operation.blocks
         |> List.tryFind
             (function
-            | AzureAnalyzerBlock.Filters (filters, range) ->
-                printfn "found filters"
-                true
+            | AzureAnalyzerBlock.Filters (filters, range) -> true
             | _ -> false)
         |> Option.map
             (function
@@ -90,7 +90,8 @@ module AzureAnalysis =
             | _ -> failwith "should not happen")
 
     let analyzeFilter (operation: AzureOperation) (requiredFilters: InformationSchema.TableInfo list) =
-        printfn "analyze filter"
+        printfn "analyze filter %A" requiredFilters
+
         match findFilters operation with
         | None ->
             if not (List.isEmpty requiredFilters) then
@@ -134,7 +135,7 @@ module AzureAnalysis =
                             sprintf
                                 "Missing filter '%s' of type %A"
                                 requiredFilter.ColumnName
-                                requiredFilter.EntityProperty
+                                requiredFilter.EntityProperty.PropertyType
 
                         yield createWarning message queryFiltersRange
 
@@ -170,7 +171,7 @@ module AzureAnalysis =
 
                           let expectedFilters =
                               remainingFilters
-                              |> List.map (fun p -> sprintf "%s:%A" p.ColumnName p.EntityProperty)
+                              |> List.map (fun p -> sprintf "%s:%A" p.ColumnName p.EntityProperty.PropertyType)
                               |> String.concat ", "
                               |> sprintf "Required filters are [%s]."
 
@@ -237,7 +238,7 @@ module AzureAnalysis =
                                       sprintf
                                           "Attempting to provide filter '%s' of type '%s' using function %s. Please use %s instead."
                                           requiredFilter.ColumnName
-                                          (requiredFilter.EntityProperty.ToString())
+                                          (requiredFilter.EntityProperty.PropertyType.ToString())
                                           providedFilter.filterFunc
                                           formattedSuggestions
 
@@ -259,9 +260,6 @@ module AzureAnalysis =
                                   let entity = requiredFilter.EntityProperty.ToString()
 
                                   match entity with
-                                  | "bit" ->
-                                      if providedFilter.filterFunc <> "AzureTable.bit"
-                                      then yield typeMismatch [ "AzureTable.bit" ]
 
                                   | ("bool"
                                   | "boolean") ->
@@ -329,8 +327,10 @@ module AzureAnalysis =
 
 
                                   | _ -> () ]
-    let analyzeTable (operation: AzureOperation) (availableTables: InformationSchema.TableList)=
-        printfn "trying to analyze table"
+
+    let analyzeTable (operation: AzureOperation) (availableTables: InformationSchema.TableList) =
+        printfn "found following tables %A" availableTables.Tables
+
         match findTable operation with
         | None ->
 
@@ -343,10 +343,15 @@ module AzureAnalysis =
 
                 [ createWarning missingTables operation.range ]
             else
-                []
+                let message =
+                    availableTables.Tables
+                    |> List.map (fun f -> sprintf "%s" f.Name)
+                    |> String.concat ", "
+                    |> sprintf "TableName is not correct please try one of following tables [%s]."
 
-        | Some (queryTable, queryTableRange) ->
-                [ createInfo (availableTables.ToString()) queryTableRange ]
+                [ createWarning message operation.range ]
+
+        | Some (queryTable, queryTableRange) -> [ createInfo queryTable queryTableRange ]
 
 
 
@@ -356,7 +361,7 @@ module AzureAnalysis =
 
     let formatColumns (availableColumns: InformationSchema.TableInfo list) =
         availableColumns
-        |> List.map (fun column -> sprintf "| -- %s of type %A" column.ColumnName column.EntityProperty)
+        |> List.map (fun column -> sprintf "| -- %s of type %A" column.ColumnName column.EntityProperty.PropertyType)
         |> String.concat "\n"
 
     let analyzeColumnReadingAttempts (columnReadAttempts: ColumnReadAttempt list)
@@ -427,7 +432,10 @@ module AzureAnalysis =
                     String.concat
                         String.Empty
                         [ sprintf "Type mismatch: attempting to read column '%s' of " column.ColumnName
-                          sprintf "type '%s' using %s. " (column.EntityProperty.PropertyType.ToString()) attempt.funcName
+                          sprintf
+                              "type '%s' using %s. "
+                              (column.EntityProperty.PropertyType.ToString())
+                              attempt.funcName
                           sprintf "Please use %s instead" formattedFunctions ]
 
                 let typeMismatch (shouldUse: string list) =
@@ -754,28 +762,40 @@ module AzureAnalysis =
 
     /// Uses database schema that is retrieved once during initialization
     /// and re-used when analyzing the rest of the Sql operation blocks
-    let analyzeOperation (operation: AzureOperation)
-                         (connectionString: string)
-                         =
+    let analyzeOperation (operation: AzureOperation) (connectionString: string) =
         task {
-            match findTable operation with
-            | None -> return []
-            | Some (table, tableRange) ->
-                let! queryAnalysis = extractFiltersAndOutputColumns (connectionString, table)
-                let! tables = databaseSchema (connectionString)
-                printfn "got %A" tables
-                match queryAnalysis,tables with
-                | Result.Error queryError,Result.Error error -> return [ createWarning queryError tableRange ]
-                | Result.Ok tableInfos,Result.Ok tables ->
+            let! tables = databaseSchema (connectionString)
+            match tables with
+            | Ok tableList ->
 
-                    let readingAttempts =
-                        defaultArg (findColumnReadAttempts operation) []
+                let tableNames =
+                    tableList.Tables
+                    |> List.map (fun f -> sprintf "%s" f.Name)
+                    |> String.concat ", "
+                match findTable operation with
+                | None ->
+                    let message =
+                        tableNames
+                        |> sprintf "TableName is not correct please try one of following tables [%s]."
 
-                    return
-                        [ yield! analyzeTable operation tables
-                          yield! analyzeFilter operation tableInfos
-                          yield! analyzeColumnReadingAttempts readingAttempts tableInfos ]
-                | _ -> return []
+                    return [ createWarning message operation.range ]
+                | Some (table, tableRange) ->
+                    let! queryAnalysis = extractFiltersAndOutputColumns (connectionString, table,tableNames)
+
+                    match queryAnalysis with
+                    | Result.Error queryError ->
+                        return [ createWarning queryError tableRange ]
+                    | Result.Ok tableInfos->
+
+                        let readingAttempts =
+                            defaultArg (findColumnReadAttempts operation) []
+
+                        return
+                            [ yield! analyzeTable operation tableList
+                              yield! analyzeFilter operation tableInfos
+                              yield! analyzeColumnReadingAttempts readingAttempts tableInfos ]
+            | Result.Error error -> return [ createWarning error operation.range ]
+
         }
         |> Async.AwaitTask
         |> Async.RunSynchronously

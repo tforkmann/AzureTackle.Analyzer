@@ -64,7 +64,7 @@ module InformationSchema =
 
     let columnDict = Dictionary<string, EntityProperty>()
 
-    let extractTableInfo (connectionString, table) =
+    let extractTableInfo (connectionString, table,availableTables) =
         task {
             let! entity = getAzureTableEntity (connectionString, table)
 
@@ -72,7 +72,7 @@ module InformationSchema =
             | Some ent ->
                 ent.Properties
                 |> Seq.iter (fun keyPair -> columnDict.Add(keyPair.Key, keyPair.Value))
-            | None -> failwithf "Could not get an entity"
+            | None -> failwithf "Could not get an entity from table %s. Please use on of the following tables [%s]" table availableTables
 
             return
                 columnDict
