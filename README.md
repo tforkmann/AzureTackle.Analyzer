@@ -9,8 +9,6 @@ Analyzer that provides embedded **Azure syntax analysis** when writing queries u
 - Detecting parameters with type-mismatch
 - Verifying the columns being read from the result set and their types
 - Built-in code fixes and nice error messages
-- Ability to write multi-line queries in `[<Literal>]` text and referencing it
-- Ability to suppress the warnings when you know better than the analyzer ;) 
 - Free (MIT licensed)
 - Supports VS Code with [Ionide](https://github.com/ionide/ionide-vscode-fsharp) via F# Analyzers SDK
 
