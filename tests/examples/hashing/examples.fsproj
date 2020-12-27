@@ -6,7 +6,9 @@
   <ItemGroup>
     <Compile Include="config.fs" />
     <Compile Include="syntacticAnalysis.fs" />
+    <Compile Include="readingFaultyAzureTableName.fs" />
     <Compile Include="readingAzureTable.fs" />
+    <Compile Include="readingAzureTableNoFilter.fs" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

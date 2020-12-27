@@ -3,14 +3,14 @@
 GROUP Analyzers
 NUGET
   remote: https://api.nuget.org/v3/index.json
-    AzureTackle (0.2.8) - restriction: >= net50
-      AzureTackle.Shared (>= 0.2.8) - restriction: >= net50
+    AzureTackle (0.2.9) - restriction: >= net50
+      AzureTackle.Shared (>= 0.2.9) - restriction: >= net50
       FSharp.Core (>= 5.0) - restriction: >= net50
       TaskBuilder.fs (>= 2.1) - restriction: >= net50
       WindowsAzure.Storage (>= 9.3.3) - restriction: >= net50
-    AzureTackle.Shared (0.2.8) - restriction: >= net50
-    AzureTackleAnalyzer (0.3.4)
-      AzureTackle (>= 0.2.8) - restriction: >= net50
+    AzureTackle.Shared (0.2.9) - restriction: >= net50
+    AzureTackleAnalyzer (0.3.5)
+      AzureTackle (>= 0.2.9) - restriction: >= net50
       F23.StringSimilarity (>= 3.1) - restriction: >= net50
       FSharp.Analyzers.SDK (>= 0.6) - restriction: >= net50
       FSharp.Compiler.Service (>= 38.0) - restriction: >= net50
@@ -591,12 +591,12 @@ NUGET
     Argu (6.1.1)
       FSharp.Core (>= 4.3.2)
       System.Configuration.ConfigurationManager (>= 4.4)
-    AzureTackle (0.2.8)
-      AzureTackle.Shared (>= 0.2.8)
+    AzureTackle (0.2.9)
+      AzureTackle.Shared (>= 0.2.9)
       FSharp.Core (>= 5.0)
       TaskBuilder.fs (>= 2.1)
       WindowsAzure.Storage (>= 9.3.3)
-    AzureTackle.Shared (0.2.8)
+    AzureTackle.Shared (0.2.9)
     Expecto (9.0.2)
       FSharp.Core (>= 4.6)
       Mono.Cecil (>= 0.11.2)

@@ -5,7 +5,11 @@ open Expecto
 open AzureTackle.Analyzers
 open AzureTackle.Analyzers.Core
 open AzureTackle
-
+open FSharp.Control.Tasks.ContextInsensitive
+open Microsoft.WindowsAzure.Storage
+open Microsoft.WindowsAzure.Storage.Table
+open AzureTackle.Analyzers.Core.InformationSchema
+open System.Threading.Tasks
 let analyzers = [ AzureTableAnalyzer.tableAnalyzer ]
 
 let inline find file =
@@ -47,74 +51,71 @@ let tests toolsPath =
         "AzureTable"
         [
 
-        //   testTask "Syntactic Analysis: AzureTable blocks can be detected with their relavant information" {
-        //       match context (find "../examples/hashing/syntacticAnalysis.fs") with
-        //       | None -> failwith "Could not crack project"
-        //       | Some context ->
-        //           let operationBlocks =
-        //               SyntacticAnalysis.findAzureOperations context
+          testTask "Syntactic Analysis: AzureTable blocks can be detected with their relavant information" {
+              match context (find "../examples/hashing/syntacticAnalysis.fs") with
+              | None -> failwith "Could not crack project"
+              | Some context ->
+                  let operationBlocks =
+                      SyntacticAnalysis.findAzureOperations context
 
-        //           Expect.equal 2 (List.length operationBlocks) "Found 11 operation blocks"
-        //   }
-        //   testTask "Syntactic Analysis: Azure tables can be analyzed" {
-        //       match context (find "../examples/hashing/readingAzureTable.fs") with
-        //       | None -> failwith "Could not crack project"
-        //       | Some context ->
-        //           match SyntacticAnalysis.findAzureOperations context with
-        //           | [operation] ->
-        //                       printfn "Operation %A" operation.blocks
-        //                       let tables =
-        //                           operation.blocks
-        //                           |> List.tryPick (fun block ->
-        //                               match block with
-        //                               | AzureAnalyzerBlock.Table (tables,_) -> Some tables
-        //                               | _ -> None)
-        //                       printfn "tables %A" tables
-        //                       match tables with
-        //                       | None -> failwith "Expected tables to be found"
-        //                     //   | Some [ ] -> failwith "Expected filters to have at least one filter"
-        //                       | Some (f) ->
-        //                           Expect.isNonEmpty f "There is one tables set"
-        //           | _ -> failwith "Should not happen"
-        //   }
-        //   testTask "Syntactic Analysis: Azure filters can be analyzed" {
-        //       match context (find "../examples/hashing/readingAzureTable.fs") with
-        //       | None ->
-        //           failwith "Could not crack project"
-        //       | Some context ->
-        //           match SyntacticAnalysis.findAzureOperations context with
-        //           | [operation] ->
-        //             let filters =
-        //                 operation.blocks
-        //                 |> List.tryPick (fun block ->
-        //                     match block with
-        //                     | AzureAnalyzerBlock.Filters (filters,_) -> Some filters
-        //                     | _ -> None)
-        //             match filters with
-        //             | None -> failwith "Expected filters to be found"
-        //             | Some [ ] -> failwith "Expected filters to have at least one filter"
-        //             | Some (f) ->
-        //                 Expect.equal 1 f.Length "There is one filter set"
-        //           | _ ->
-        //             failwith "Should not happen"
-        //   }
-        //   testTask "Syntactic Analysis: simple filter can be read" {
-        //     match context (find "../examples/hashing/readingAzureTable.fs") with
-        //     | None -> failwith "Could not crack project"
-        //     | Some context ->
-        //         match SyntacticAnalysis.findAzureOperations context with
-        //         | [ operation ] ->
-        //             match AzureAnalysis.findFilters operation with
-        //             | Some(filter, range) ->
-        //                 printfn "filter %A" filter
-        //                 Expect.equal filter []"Literal string should be read correctly"
-        //             | None -> failwith "Should have found the correct query"
-        //         | _ ->
-        //             failwith "Should not happen"
-        //     }
-          testTask "Semantic Analysis: empty filter sets with missing filters give error" {
+                  Expect.equal 2 (List.length operationBlocks) "Found 11 operation blocks"
+          }
+          testTask "Syntactic Analysis: Azure tables can be analyzed" {
+              match context (find "../examples/hashing/readingFaultyAzureTableName.fs") with
+              | None -> failwith "Could not crack project"
+              | Some context ->
+                  let! cloudTable =
+                    task{
+                        match! AzureAnalysis.databaseSchema connectionString with
+                        | Result.Ok schema ->
+                            return schema.Tables.[0]
+                        | Result.Error connectionError ->
+                            return failwith connectionError
+                        }
+                  let operations = SyntacticAnalysis.findAzureOperations context
+                  let tableOperation = operations.Head
+                  let messages = AzureAnalysis.analyzeOperation tableOperation connectionString
+                  let table : CloudTable = cloudTable
+                  Expect.isTrue (messages.[0].Message.Contains table.Name) "Correct table names should be found"
 
-                match context (find "../examples/hashing/readingAzureTable.fs") with
+          }
+          testTask "Syntactic Analysis: Azure filters can be analyzed" {
+              match context (find "../examples/hashing/readingAzureTable.fs") with
+              | None ->
+                  failwith "Could not crack project"
+              | Some context ->
+                  match SyntacticAnalysis.findAzureOperations context with
+                  | [operation] ->
+                    let filters =
+                        operation.blocks
+                        |> List.tryPick (fun block ->
+                            match block with
+                            | AzureAnalyzerBlock.Filters (filters,_) -> Some filters
+                            | _ -> None)
+                    match filters with
+                    | None -> failwith "Expected filters to be found"
+                    | Some [ ] -> failwith "Expected filters to have at least one filter"
+                    | Some (f) ->
+                        Expect.equal 2 f.Length "There is one filter set"
+                  | _ ->
+                    failwith "Should not happen"
+          }
+          testTask "Syntactic Analysis: simple filter can be read" {
+            match context (find "../examples/hashing/readingAzureTable.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SyntacticAnalysis.findAzureOperations context with
+                | [ operation ] ->
+                    match AzureAnalysis.findFilters operation with
+                    | Some(filter, range) ->
+                        Expect.equal filter.Length 2 "Literal string should be read correctly"
+                    | None -> failwith "Should have found the correct query"
+                | _ ->
+                    failwith "Should not happen"
+            }
+          testTask "Semantic Analysis: empty filter should not give error" {
+
+                match context (find "../examples/hashing/readingAzureTableNoFilter.fs") with
                 | None -> failwith "Could not crack project"
                 | Some context ->
                     match! AzureAnalysis.databaseSchema connectionString with
@@ -123,10 +124,8 @@ let tests toolsPath =
                     | Result.Ok schema ->
                         let block = List.exactlyOne (SyntacticAnalysis.findAzureOperations context)
                         let messages = AzureAnalysis.analyzeOperation block connectionString
-                        match messages with
-                        | [ message ] ->
-                            Expect.isTrue (message.IsWarning()) "The message is an warning"
-                        | _ ->
-                            failwith "Expected only one error message"
+                        let filterMessage = messages |> List.find (fun x -> x.Type.Contains "Filter")
+                        let messageType = filterMessage.IsInfo()
+                        Expect.isTrue messageType "The message is an info"
             }
           ]

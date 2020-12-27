@@ -3,7 +3,6 @@ namespace AzureTackle.Analyzers
 open FSharp.Analyzers.SDK
 open System
 open FSharp.Control.Tasks.ContextInsensitive
-
 module AzureTableAnalyzer =
 
     let specializedSeverity =
@@ -47,7 +46,7 @@ module AzureTableAnalyzer =
                        || String.IsNullOrWhiteSpace connectionString then
                         return
                             [ for block in syntacticBlocks ->
-                                Core.AzureAnalysis.createWarning
+                                Core.AzureAnalysis.createWarning Core.Other
                                     "Missing environment variable 'AZURE_TACKLE'. Please set that variable to the connection string of your azure table put the connection string in a file called 'AZURE_TACKLE' relative next your project or in your project root."
                                     block.range
                                 |> specializedMessage ]
@@ -58,7 +57,7 @@ module AzureTableAnalyzer =
                         | Result.Error connectionError ->
                             return
                                 [ for block in syntacticBlocks ->
-                                    Core.AzureAnalysis.createWarning
+                                    Core.AzureAnalysis.createWarning Core.Connection
                                         (sprintf
                                             "Error while connecting to the azure table using the connection string %s from environment variable 'AZURE_TACKLE' or put the connection string in a file called 'AZURE_TACKLE' relative next your project or in your project root. Connection error: %s SyntactivBlocks: %A"
                                             connectionString

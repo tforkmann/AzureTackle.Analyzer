@@ -8,6 +8,7 @@ open FSharp.Control.Tasks.ContextInsensitive
 
 module AzureAnalysis =
 
+
     type ComparisonFilters =
         { filterName: string
           column: string
@@ -25,31 +26,31 @@ module AzureAnalysis =
               column = columnName
               table = None }
 
-    let extractFiltersAndOutputColumns (connectionString, tableName,avaiableTables) =
+    let extractTableInfo (connectionString, tableName, avaiableTables) =
         task {
             try
-                let! tableInfo = InformationSchema.extractTableInfo (connectionString, tableName,avaiableTables)
+                let! tableInfo = extractTableInfo (connectionString, tableName, avaiableTables)
                 return Result.Ok tableInfo
             with error ->
                 // any other generic error
                 return Result.Error(sprintf "%s\n%s" error.Message error.StackTrace)
         }
 
-    let createWarning (message: string) (range: range): Message =
+    let createWarning (analysisType:AnalysisType) (message: string) (range: range): Message =
         printfn "Warning %s" message
 
         { Message = message
-          Type = "Azure Analysis"
+          Type = analysisType.GetValue
           Code = "AZUREL0001"
           Severity = Warning
           Range = range
           Fixes = [] }
 
-    let createInfo (message: string) (range: range): Message =
+    let createInfo (analysisType:AnalysisType) (message: string) (range: range): Message =
         printfn "Info %s" message
 
         { Message = message
-          Type = "Azure Analysis"
+          Type = analysisType.GetValue
           Code = "AZURE0001"
           Severity = Info
           Range = range
@@ -97,17 +98,17 @@ module AzureAnalysis =
             if not (List.isEmpty requiredFilters) then
                 let missingFilters =
                     requiredFilters
-                    |> List.map (fun f -> sprintf "%s:%A" f.ColumnName f.EntityProperty)
+                    |> List.map (fun f -> sprintf "%s:%A" f.ColumnName f.EntityProperty.PropertyType)
                     |> String.concat ", "
-                    |> sprintf "Missing filters [%s]. Please use AzureTable.filter to provide them."
+                    |> sprintf "You didn't assign a filter. You can filter following properties [%s]. Please use AzureTable.filter to provide them."
 
-                [ createWarning missingFilters operation.range ]
+                [ createInfo Filter missingFilters operation.range ]
             else
                 []
 
         | Some (queryFilters, queryFiltersRange) ->
             if List.isEmpty requiredFilters then
-                [ createWarning "Provided filters are redundant. Azure execute is not parameterized" operation.range ]
+                [ createWarning Filter "Provided filters are redundant. Azure execute is not parameterized" operation.range ]
             else
 
                 /// None of the required filters have the name of this provided filter
@@ -137,12 +138,12 @@ module AzureAnalysis =
                                 requiredFilter.ColumnName
                                 requiredFilter.EntityProperty.PropertyType
 
-                        yield createWarning message queryFiltersRange
+                        yield createWarning Filter message queryFiltersRange
 
                   for providedFilter in queryFilters do
                       if isRedundant providedFilter then
                           yield
-                              createWarning
+                              createWarning Filter
                                   (sprintf
                                       "Provided filter '%s' is redundant. The query does not require such filter"
                                       providedFilter.name)
@@ -185,20 +186,20 @@ module AzureAnalysis =
 
                           let warning =
                               if String.IsNullOrWhiteSpace(providedFilter.name) then
-                                  createWarning
+                                  createWarning Filter
                                       (sprintf
                                           "Empty filter name was provided. Please provide one of %s"
                                           expectedFilters)
                                       providedFilter.range
                               else if List.length codeFixes = 1 then
-                                  createWarning
+                                  createWarning Filter
                                       (sprintf
                                           "Unexpected filter '%s' is provided. Did you mean '%s'?"
                                           providedFilter.name
                                           closestAlternative)
                                       providedFilter.range
                               else
-                                  createWarning
+                                  createWarning Filter
                                       (sprintf
                                           "Unexpected filter '%s' is provided. Did you mean '%s'? %s"
                                           providedFilter.name
@@ -250,7 +251,7 @@ module AzureAnalysis =
                                                 FromRange = providedFilter.filterFuncRange
                                                 ToText = func })
 
-                                  { createWarning warning providedFilter.filterFuncRange with
+                                  { createWarning Filter warning providedFilter.filterFuncRange with
                                         Fixes = codeFixs }
 
                               if providedFilter.filterFunc = "AzureTable.filter" then
@@ -341,7 +342,7 @@ module AzureAnalysis =
                     |> String.concat ", "
                     |> sprintf "Missing tables [%s]. Please use AzureTable.table to provide them."
 
-                [ createWarning missingTables operation.range ]
+                [ createWarning Table missingTables operation.range ]
             else
                 let message =
                     availableTables.Tables
@@ -349,9 +350,9 @@ module AzureAnalysis =
                     |> String.concat ", "
                     |> sprintf "TableName is not correct please try one of following tables [%s]."
 
-                [ createWarning message operation.range ]
+                [ createWarning Table message operation.range ]
 
-        | Some (queryTable, queryTableRange) -> [ createInfo queryTable queryTableRange ]
+        | Some (queryTable, queryTableRange) -> [ createInfo Table queryTable queryTableRange ]
 
 
 
@@ -376,7 +377,7 @@ module AzureAnalysis =
                             "Attempting to read column named '%s' from a result set which doesn't return any columns. In case you are executing DELETE, INSERT or UPDATE queries, you might want to use AzureTable.executeNonQuery or AzureTable.executeNonQueryAsync to obtain the number of affected rows. You can also add a RETURNING clause in your query to make it return the rows which are updated, inserted or deleted from that query."
                             attempt.columnName
 
-                    yield createWarning warningMsg attempt.columnNameRange
+                    yield createWarning Execute warningMsg attempt.columnNameRange
                 else
                     let levenshtein = NormalizedLevenshtein()
 
@@ -398,7 +399,7 @@ module AzureAnalysis =
                                 (formatColumns availableColumns)
 
                     let warning =
-                        createWarning warningMsg attempt.columnNameRange
+                        createWarning Execute warningMsg attempt.columnNameRange
 
                     let codeFixes =
                         availableColumns
@@ -449,7 +450,7 @@ module AzureAnalysis =
                                   FromText = attempt.funcName
                                   ToText = func })
 
-                    { createWarning warningMessage attempt.funcCallRange with
+                    { createWarning Execute warningMessage attempt.funcCallRange with
                           Fixes = fixes }
 
                 if attempt.funcName.StartsWith "AzureTable." then
@@ -765,6 +766,7 @@ module AzureAnalysis =
     let analyzeOperation (operation: AzureOperation) (connectionString: string) =
         task {
             let! tables = databaseSchema (connectionString)
+
             match tables with
             | Ok tableList ->
 
@@ -772,21 +774,21 @@ module AzureAnalysis =
                     tableList.Tables
                     |> List.map (fun f -> sprintf "%s" f.Name)
                     |> String.concat ", "
+
                 match findTable operation with
                 | None ->
                     let message =
                         tableNames
                         |> sprintf "TableName is not correct please try one of following tables [%s]."
 
-                    return [ createWarning message operation.range ]
+                    return [ createWarning Table message operation.range ]
                 | Some (table, tableRange) ->
-                    let! queryAnalysis = extractFiltersAndOutputColumns (connectionString, table,tableNames)
+                    let! queryAnalysis = extractTableInfo (connectionString, table, tableNames)
 
                     match queryAnalysis with
-                    | Result.Error queryError ->
-                        return [ createWarning queryError tableRange ]
-                    | Result.Ok tableInfos->
-
+                    | Result.Error queryError -> return [ createWarning Table queryError tableRange ]
+                    | Result.Ok tableInfos ->
+                        printfn "tableInfos %A" tableInfos
                         let readingAttempts =
                             defaultArg (findColumnReadAttempts operation) []
 
@@ -794,7 +796,7 @@ module AzureAnalysis =
                             [ yield! analyzeTable operation tableList
                               yield! analyzeFilter operation tableInfos
                               yield! analyzeColumnReadingAttempts readingAttempts tableInfos ]
-            | Result.Error error -> return [ createWarning error operation.range ]
+            | Result.Error error -> return [ createWarning Other error operation.range ]
 
         }
         |> Async.AwaitTask

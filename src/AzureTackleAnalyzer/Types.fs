@@ -67,3 +67,16 @@ type AzureAnalyzerBlock =
 type AzureOperation =
     { blocks: AzureAnalyzerBlock list
       range: range }
+type AnalysisType =
+    | Filter
+    | Table
+    | Execute
+    | Connection
+    | Other
+    member this.GetValue =
+        match this with
+        | Filter -> "FilterAnalysis"
+        | Table -> "TableAnalysis"
+        | Execute -> "ExecuteAnalysis"
+        | Connection -> "ConnectionAnalysis"
+        | Other -> "OtherAnalysis"

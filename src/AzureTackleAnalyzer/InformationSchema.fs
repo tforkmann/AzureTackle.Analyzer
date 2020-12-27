@@ -64,24 +64,35 @@ module InformationSchema =
 
     let columnDict = Dictionary<string, EntityProperty>()
 
-    let extractTableInfo (connectionString, table,availableTables) =
+    let extractTableInfo (connectionString, tableName ,availableTables) =
         task {
-            let! entity = getAzureTableEntity (connectionString, table)
+            try
 
-            match entity.Entity with
-            | Some ent ->
-                ent.Properties
-                |> Seq.iter (fun keyPair -> columnDict.Add(keyPair.Key, keyPair.Value))
-            | None -> failwithf "Could not get an entity from table %s. Please use on of the following tables [%s]" table availableTables
+                let! entity = getAzureTableEntity (connectionString, tableName)
 
-            return
-                columnDict
-                |> Seq.map
-                    (fun column ->
+                match entity.Entity with
+                | Some ent ->
+                    ent.Properties
+                    |> Seq.iter (fun keyPair -> columnDict.Add(keyPair.Key, keyPair.Value))
+                | None -> return failwithf "Could not get an entity from table %s. Please use on of the following tables [%s]" tableName availableTables
+                let partAndRowKey  =
+                    [{ColumnName = "RowKey"
+                      Nullable = false
+                      EntityProperty =  EntityProperty.GeneratePropertyForString entity.Entity.Value.RowKey}
+                     {ColumnName = "PartKey"
+                      Nullable = false
+                      EntityProperty = EntityProperty.GeneratePropertyForString entity.Entity.Value.PartitionKey}]
+                let tableInfos =
+                    columnDict
+                    |> Seq.map
+                        (fun column ->
 
-                        { ColumnName = column.Key
-                          Nullable = false //TODO: Find out if nullable
-                          EntityProperty = column.Value })
-                |> Seq.toList
+                            { ColumnName = column.Key
+                              Nullable = false //TODO: Find out if nullable
+                              EntityProperty = column.Value })
+                    |> Seq.toList
+                return List.concat [partAndRowKey; tableInfos]
+            with
+            | _ -> return failwithf "Could not get entity for table %s. Available tables are [%s]" tableName availableTables
 
         }
