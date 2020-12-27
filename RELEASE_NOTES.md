@@ -1,3 +1,7 @@
+#### 0.3.7 - 2020-12-27
+* fix filter names
+#### 0.3.6 - 2020-12-27
+* fix filter and table messages
 #### 0.3.5 - 2020-12-24
 * optimize warning message
 #### 0.3.4 - 2020-12-23

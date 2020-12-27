@@ -76,10 +76,10 @@ module InformationSchema =
                     |> Seq.iter (fun keyPair -> columnDict.Add(keyPair.Key, keyPair.Value))
                 | None -> return failwithf "Could not get an entity from table %s. Please use on of the following tables [%s]" tableName availableTables
                 let partAndRowKey  =
-                    [{ColumnName = "RowKey"
+                    [{ColumnName = "RoKey"
                       Nullable = false
                       EntityProperty =  EntityProperty.GeneratePropertyForString entity.Entity.Value.RowKey}
-                     {ColumnName = "PartKey"
+                     {ColumnName = "PaKey"
                       Nullable = false
                       EntityProperty = EntityProperty.GeneratePropertyForString entity.Entity.Value.PartitionKey}]
                 let tableInfos =

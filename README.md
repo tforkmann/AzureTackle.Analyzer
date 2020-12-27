@@ -3,28 +3,22 @@
 
 Analyzer that provides embedded **Azure syntax analysis** when writing queries using [AzureTackle](https://github.com/tforkmann/AzureTackle). It verifies query syntax, checks the parameters in the query match with the provided parameters and performs **type-checking** on the functions that read columns from the result sets.
 
-![Demo](sql.gif)
-
 ## Features
 - Static query syntax analysis and type-checking against development database
 - Detecting missing or redundant parameters
 - Detecting parameters with type-mismatch
 - Verifying the columns being read from the result set and their types
-- Detecting nullable columns
 - Built-in code fixes and nice error messages
 - Ability to write multi-line queries in `[<Literal>]` text and referencing it
 - Ability to suppress the warnings when you know better than the analyzer ;) 
 - Free (MIT licensed)
 - Supports VS Code with [Ionide](https://github.com/ionide/ionide-vscode-fsharp) via F# Analyzers SDK
-- Supports Visual Studio
-- Supports CLI (via Ubik)
 
 ## NuGet
 
 | Package              | Stable                                                                                                                     | Prerelease                                                                                                                                         |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | AzureTackleAnalyzer | [![NuGet Badge](https://buildstats.info/nuget/AzureTackleAnalyzer)](https://www.nuget.org/packages/AzureTackleAnalyzer/) | [![NuGet Badge](https://buildstats.info/nuget/AzureTackleAnalyzer?includePreReleases=true)](https://www.nuget.org/packages/AzureTackleAnalyzer/) |
-| Ubik | [![NuGet Badge](https://buildstats.info/nuget/Ubik)](https://www.nuget.org/packages/Ubik/) | [![NuGet Badge](https://buildstats.info/nuget/Ubik?includePreReleases=true)](https://www.nuget.org/packages/Ubik/) |
 
 ## Using The Analyzer (VS Code)
 

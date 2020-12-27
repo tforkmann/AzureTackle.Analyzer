@@ -4,20 +4,20 @@ open System.Reflection
 
 [<assembly: AssemblyTitleAttribute("AzureTackleAnalyzer.Tests")>]
 [<assembly: AssemblyProductAttribute("AzureTackleAnalyzer")>]
-[<assembly: AssemblyVersionAttribute("0.3.5")>]
-[<assembly: AssemblyMetadataAttribute("ReleaseDate","2020-12-24T00:00:00.0000000")>]
-[<assembly: AssemblyFileVersionAttribute("0.3.5")>]
-[<assembly: AssemblyInformationalVersionAttribute("0.3.5")>]
+[<assembly: AssemblyVersionAttribute("0.3.7")>]
+[<assembly: AssemblyMetadataAttribute("ReleaseDate","2020-12-27T00:00:00.0000000")>]
+[<assembly: AssemblyFileVersionAttribute("0.3.7")>]
+[<assembly: AssemblyInformationalVersionAttribute("0.3.7")>]
 [<assembly: AssemblyMetadataAttribute("ReleaseChannel","release")>]
-[<assembly: AssemblyMetadataAttribute("GitHash","344b9ce5cc58431907f2bd4e57a9db41312b0018")>]
+[<assembly: AssemblyMetadataAttribute("GitHash","152262e07cb7a49d797b48dc302732266b765fe1")>]
 do ()
 
 module internal AssemblyVersionInformation =
     let [<Literal>] AssemblyTitle = "AzureTackleAnalyzer.Tests"
     let [<Literal>] AssemblyProduct = "AzureTackleAnalyzer"
-    let [<Literal>] AssemblyVersion = "0.3.5"
-    let [<Literal>] AssemblyMetadata_ReleaseDate = "2020-12-24T00:00:00.0000000"
-    let [<Literal>] AssemblyFileVersion = "0.3.5"
-    let [<Literal>] AssemblyInformationalVersion = "0.3.5"
+    let [<Literal>] AssemblyVersion = "0.3.7"
+    let [<Literal>] AssemblyMetadata_ReleaseDate = "2020-12-27T00:00:00.0000000"
+    let [<Literal>] AssemblyFileVersion = "0.3.7"
+    let [<Literal>] AssemblyInformationalVersion = "0.3.7"
     let [<Literal>] AssemblyMetadata_ReleaseChannel = "release"
-    let [<Literal>] AssemblyMetadata_GitHash = "344b9ce5cc58431907f2bd4e57a9db41312b0018"
+    let [<Literal>] AssemblyMetadata_GitHash = "152262e07cb7a49d797b48dc302732266b765fe1"

@@ -174,7 +174,7 @@ module AzureAnalysis =
                               remainingFilters
                               |> List.map (fun p -> sprintf "%s:%A" p.ColumnName p.EntityProperty.PropertyType)
                               |> String.concat ", "
-                              |> sprintf "Required filters are [%s]."
+                              |> sprintf "Expected filters are [%s]."
 
                           let codeFixes =
                               remainingFilters
