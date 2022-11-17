@@ -30,9 +30,9 @@ let config =
         .Build()
 
 let connectionString = config.["StorageConnectionString"]
-
+printfn" connectionString: %s" connectionString
 [<Literal>]
-let TestTable = "TestTable"
+let TestTable = "accounting"
 
 type TestData =
     { PartKey: string

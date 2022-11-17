@@ -52,7 +52,6 @@ module AzureTableAnalyzer =
                                 |> specializedMessage ]
                     else
                         let! schema = Core.AzureAnalysis.databaseSchema connectionString
-                        printfn "got schema"
                         match schema with
                         | Result.Error connectionError ->
                             return

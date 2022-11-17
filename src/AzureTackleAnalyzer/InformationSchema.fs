@@ -17,29 +17,35 @@ module InformationSchema =
 
     let getTablesRecursivly (storageAccount: CloudStorageAccount) =
         task {
-            let rec getTables token =
-                task {
-                    let tableClient = storageAccount.CreateCloudTableClient()
-                    let! result = tableClient.ListTablesSegmentedAsync(token)
+            try
+                let rec getTables token =
+                    task {
+                        let tableClient = storageAccount.CreateCloudTableClient()
+                        let! result = tableClient.ListTablesSegmentedAsync(token)
+                        let token = result.ContinuationToken
+                        let result = result |> Seq.toList
 
-                    let token = result.ContinuationToken
-                    let result = result |> Seq.toList
+                        if isNull token then
+                            return result
+                        else
+                            let! others = getTables token
+                            return result @ others
+                    }
 
-                    if isNull token then
-                        return result
-                    else
-                        let! others = getTables token
-                        return result @ others
-                }
+                return! getTables null
+            with
+            | exn -> return failwithf "Could not get tables from storage account %A %s" storageAccount exn.Message
 
-            return! getTables null
         }
 
     let getAzureTables (connectionString:string) =
         task {
-            let storageAccount = CloudStorageAccount.Parse connectionString
-            let! tables = getTablesRecursivly storageAccount
-            return { Tables = tables }
+            try
+                let storageAccount = CloudStorageAccount.Parse connectionString
+                let! tables = getTablesRecursivly storageAccount
+                return { Tables = tables }
+            with
+            | exn-> return failwithf "Could not get tables %s" exn.Message
         }
 
     let getAzureTableEntity (connectionString, table) =
