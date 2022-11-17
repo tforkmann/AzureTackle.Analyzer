@@ -8,5 +8,5 @@ group AzureTackleAnalyzer
   Ionide.ProjInfo.ProjectSystem
   Glob
   Argu
-  Microsoft.Build copy_local: false
-  Microsoft.Build.Locator copy_local: false
+  Microsoft.Extensions.Configuration
+  Microsoft.Extensions.Configuration.Json

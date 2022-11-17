@@ -9,10 +9,6 @@ open GlobExpressions
 open Ionide.ProjInfo
 open Argu
 open FSharp.Compiler.EditorServices
-open FSharp.Compiler
-open FSharp.Compiler.CodeAnalysis
-open FSharp.Compiler.EditorServices
-open FSharp.Compiler.Text
 
 type Arguments =
     | Project of string

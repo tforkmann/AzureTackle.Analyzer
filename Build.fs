@@ -246,7 +246,7 @@ let dependencies = [
     "Clean"
         // ==> "UpdateTools"
         ==> "Build"
-        ==> "UnitTests"
+        // ==> "UnitTests"
         ==> "PrepareRelease"
         ==> "Pack"
         ==> "Push"
