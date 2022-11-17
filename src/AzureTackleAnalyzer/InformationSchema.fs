@@ -1,8 +1,7 @@
 namespace AzureTackle.Analyzers.Core
 
 open System.Collections.Generic
-open Microsoft.WindowsAzure.Storage
-open Microsoft.WindowsAzure.Storage.Table
+open Microsoft.Azure.Cosmos.Table
 open AzureTackle
 open FSharp.Control.Tasks.ContextInsensitive
 
@@ -49,10 +48,7 @@ module InformationSchema =
                 AzureTable.connect connectionString
                 |> AzureTable.table table
 
-            let azureTable =
-                match azureProps.AzureTable with
-                | Some table -> table
-                | None -> failwith "please add a table"
+            let azureTable = AzureTable.getTable azureProps
 
             let filter =
                 AzureTable.appendFilters azureProps.Filters

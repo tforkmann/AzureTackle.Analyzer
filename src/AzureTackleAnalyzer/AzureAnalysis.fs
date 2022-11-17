@@ -1,10 +1,11 @@
 namespace AzureTackle.Analyzers.Core
 
 open System
-open FSharp.Compiler.Range
 open F23.StringSimilarity
 open InformationSchema
 open FSharp.Control.Tasks.ContextInsensitive
+open FSharp.Core
+open FSharp.Compiler.Text
 
 module AzureAnalysis =
 
@@ -13,7 +14,6 @@ module AzureAnalysis =
         { filterName: string
           column: string
           table: string option }
-
     let columnFilterTable (filterName: string) (columnName: string) =
         if columnName.Contains "." then
             let parts = columnName.Split '.'
@@ -36,7 +36,7 @@ module AzureAnalysis =
                 return Result.Error(sprintf "%s\n%s" error.Message error.StackTrace)
         }
 
-    let createWarning (analysisType:AnalysisType) (message: string) (range: range): Message =
+    let createWarning (analysisType:AnalysisType) (message: string) range: Message =
         printfn "Warning %s" message
 
         { Message = message

@@ -1,82 +1,80 @@
 namespace AzureTackle.Analyzers.Core
 
-open FSharp.Compiler.Range
-
-open FSharp.Compiler.SyntaxTree
-open FSharp.Compiler.SourceCodeServices
-
+open FSharp.Compiler.Symbols
+open FSharp.Compiler.Text
+open FSharp.Compiler.Syntax
 
 type AzureTableAnalyzerContext =
-    { FileName: string
-      Content: string []
-      ParseTree: ParsedInput
-      Symbols: FSharpEntity list }
+  { FileName: string
+    Content: string[]
+    ParseTree: ParsedInput
+    Symbols: FSharpEntity list }
 
 type Fix =
-    { FromRange : range
-      FromText : string
-      ToText : string }
+  { FromRange: range
+    FromText: string
+    ToText: string }
 
 type Severity =
-    | Info
-    | Warning
-    | Error
+  | Info
+  | Warning
+  | Error
 
 type Message =
-    { Type: string
-      Message: string
-      Code: string
-      Severity: Severity
-      Range: range
-      Fixes: Fix list }
+  { Type: string
+    Message: string
+    Code: string
+    Severity: Severity
+    Range: range
+    Fixes: Fix list }
 
-    with
-        member self.IsWarning() = self.Severity = Warning
-        member self.IsInfo() = self.Severity = Info
-        member self.IsError() = self.Severity = Error
+  member self.IsWarning() = self.Severity = Warning
+  member self.IsInfo() = self.Severity = Info
+  member self.IsError() = self.Severity = Error
 
 type ColumnReadAttempt =
-    { funcName: string
-      columnName: string
-      columnNameRange: range
-      funcCallRange: range }
+  { funcName: string
+    columnName: string
+    columnNameRange: range
+    funcCallRange: range }
 
-type UsedFilter = {
-    name : string
-    range : range
-    filterFunc : string
-    filterFuncRange : range
-    applicationRange : range option
-}
-type FilterSet = {
-    filters : UsedFilter list
-    range : range
-}
+type UsedFilter =
+  { name: string
+    range: range
+    filterFunc: string
+    filterFuncRange: range
+    applicationRange: range option }
 
-type TransactionQuery = {
-    query: string
-    queryRange : range
-    filterSets : FilterSet list
-}
+type FilterSet =
+  { filters: UsedFilter list
+    range: range }
+
+type TransactionQuery =
+  { query: string
+    queryRange: range
+    filterSets: FilterSet list }
+
 [<RequireQualifiedAccess>]
 type AzureAnalyzerBlock =
-    | Table of string * range
-    | ReadingColumns of ColumnReadAttempt list
-    | Filters of UsedFilter list *  range
+  | Table of string * range
+  | ReadingColumns of ColumnReadAttempt list
+  | Filters of UsedFilter list * range
 
 type AzureOperation =
-    { blocks: AzureAnalyzerBlock list
-      range: range }
+  { blocks: AzureAnalyzerBlock list
+    range: range }
+
 type AnalysisType =
-    | Filter
-    | Table
-    | Execute
-    | Connection
-    | Other
-    member this.GetValue =
-        match this with
-        | Filter -> "FilterAnalysis"
-        | Table -> "TableAnalysis"
-        | Execute -> "ExecuteAnalysis"
-        | Connection -> "ConnectionAnalysis"
-        | Other -> "OtherAnalysis"
+  | Filter
+  | Table
+  | Execute
+  | Connection
+  | Other
+
+  member this.GetValue =
+    match this with
+    | Filter -> "FilterAnalysis"
+    | Table -> "TableAnalysis"
+    | Execute -> "ExecuteAnalysis"
+    | Connection -> "ConnectionAnalysis"
+    | Other -> "OtherAnalysis"

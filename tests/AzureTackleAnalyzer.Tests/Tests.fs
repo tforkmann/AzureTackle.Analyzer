@@ -1,15 +1,15 @@
 module Tests
 
 open System
+open System.IO
 open Expecto
 open AzureTackle.Analyzers
 open AzureTackle.Analyzers.Core
 open AzureTackle
 open FSharp.Control.Tasks.ContextInsensitive
-open Microsoft.WindowsAzure.Storage
-open Microsoft.WindowsAzure.Storage.Table
+open Microsoft.Azure.Cosmos.Table
 open AzureTackle.Analyzers.Core.InformationSchema
-open System.Threading.Tasks
+open Microsoft.Extensions.Configuration
 let analyzers = [ AzureTableAnalyzer.tableAnalyzer ]
 
 let inline find file =
@@ -23,9 +23,13 @@ let raiseWhenFailed =
     | Ok _ -> ()
     | Result.Error error -> raise error
 
+let config =
+    ConfigurationBuilder()
+        .SetBasePath(Directory.GetCurrentDirectory())
+        .AddJsonFile("AZURE_TACKLE.json")
+        .Build()
 
-let connectionString =
-    "DefaultEndpointsProtocol=https;AccountName=dptestchiadev;AccountKey=Vd64M6dPKvW/yRQ32xvptAJWV0GGlaeZJxkArJ8ZGJEKWx/aZH5KAxMMPHJkeL/gMiJb65krq8S5yRxCK67p8w==;BlobEndpoint=https://dptestchiadev.blob.core.windows.net/;QueueEndpoint=https://dptestchiadev.queue.core.windows.net/;TableEndpoint=https://dptestchiadev.table.core.windows.net/;FileEndpoint=https://dptestchiadev.file.core.windows.net/;"
+let connectionString = config.["StorageConnectionString"]
 
 [<Literal>]
 let TestTable = "TestTable"
