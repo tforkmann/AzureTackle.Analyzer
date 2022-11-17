@@ -2,9 +2,8 @@ namespace AzureTackle.Analyzers.Core
 
 open System.IO
 open System.Linq
-open FSharp.Compiler.SourceCodeServices
 open Microsoft.Extensions.Configuration
-
+open FSharp.Compiler.CodeAnalysis
 module AzureTableAnalyzer =
 
     /// Recursively tries to find the parent of a file starting from a directory

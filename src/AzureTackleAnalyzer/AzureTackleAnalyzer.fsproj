@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <Name>AzureTackleAnalyzer</Name>
-        <TargetFrameworks>net5.0</TargetFrameworks>
+        <TargetFrameworks>net7.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
         <Description>Advanced embedded static analysis and type-checking for AzureTable code from F#</Description>
