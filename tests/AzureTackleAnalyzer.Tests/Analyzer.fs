@@ -2,12 +2,17 @@ module AnalyzerBootstrap
 
 open System
 open System.IO
-open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.Text
 open FSharp.Analyzers.SDK
+open FSharp.Compiler.CodeAnalysis
 open GlobExpressions
 open Ionide.ProjInfo
 open Argu
+open FSharp.Compiler.EditorServices
+open FSharp.Compiler
+open FSharp.Compiler.CodeAnalysis
+open FSharp.Compiler.EditorServices
+open FSharp.Compiler.Text
 
 type Arguments =
     | Project of string
@@ -22,9 +27,8 @@ let mutable verbose = false
 
 let createFCS () =
     let checker =
-        FSharpChecker.Create(projectCacheSize = 200, keepAllBackgroundResolutions = true, keepAssemblyContents = true)
+        FSharpChecker.Create(projectCacheSize = 200, keepAllBackgroundResolutions = true, keepAssemblyContents = true, keepAllBackgroundSymbolUses =true)
 
-    checker.ImplicitlyStartBackgroundWork <- true
     checker
 
 let fcs = createFCS ()
@@ -90,7 +94,7 @@ let getAllEntities (checkResults: FSharpCheckFileResults) (publicOnly: bool): As
     try
         let res =
             [ yield!
-                AssemblyContentProvider.getAssemblySignatureContent
+                AssemblyContent.GetAssemblySignatureContent
                     AssemblyContentType.Full
                     checkResults.PartialAssemblySignature
               let ctx = checkResults.ProjectContext
@@ -104,10 +108,9 @@ let getAllEntities (checkResults: FSharpCheckFileResults) (publicOnly: bool): As
               // get Content.Entities from it.
 
               for fileName, signatures in assembliesByFileName do
-                  let contentType = if publicOnly then Public else Full
+                  let contentType = if publicOnly then AssemblyContentType.Public else AssemblyContentType.Full
 
-                  let content =
-                      AssemblyContentProvider.getAssemblyContent entityCache.Locking contentType fileName signatures
+                  let content = AssemblyContent.GetAssemblyContent entityCache.Locking contentType fileName signatures
 
                   yield! content ]
 
@@ -115,16 +118,15 @@ let getAllEntities (checkResults: FSharpCheckFileResults) (publicOnly: bool): As
     with _ -> []
 
 let createContext (file, text: string, p: FSharpParseFileResults, c: FSharpCheckFileResults) =
-    match p.ParseTree, c.ImplementationFile with
-    | Some pt, Some tast ->
+    match c.ImplementationFile with
+    | Some tast ->
         let context: Context =
-            { FileName = file
-              Content = text.Split([| '\n' |])
-              ParseTree = pt
-              TypedTree = tast
-              Symbols = c.PartialAssemblySignature.Entities |> Seq.toList
-              GetAllEntities = getAllEntities c }
-
+            {   FileName = file
+                Content = text.Split([| '\n' |])
+                ParseTree = p.ParseTree
+                TypedTree = tast
+                Symbols = c.PartialAssemblySignature.Entities |> Seq.toList
+                GetAllEntities = getAllEntities c }
         Some context
     | _ -> None
 
